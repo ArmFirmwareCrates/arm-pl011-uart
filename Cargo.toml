@@ -2,10 +2,22 @@
 # SPDX-License-Identifier: MIT OR Apache-2.0
 
 [package]
-name = "pl011"
+name = "arm-pl011"
 version = "0.1.0"
+authors = [
+    "Balint Dobszay <balint.dobszay@arm.com>",
+    "Imre Kis <imre.kis@arm.com>",
+]
+description = "Arm PrimeCell UART (PL011) driver"
 edition = "2021"
+license = "MIT OR Apache-2.0"
+repository = "https://git.trustedfirmware.org/rust-spmc/rust-spmc.git"
+keywords = ["arm", "pl011", "uart", "driver"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+bitflags = "2.6"
+embedded-hal-nb = "1.0"
+embedded-io = "0.6"
+volatile-register = "0.2"
