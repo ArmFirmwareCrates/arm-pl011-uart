@@ -328,7 +328,7 @@ where
         let ibrd = baud_div_bits >> 6;
         let fbrd = baud_div_bits & 0x3F;
 
-        if ibrd == 0 || (ibrd == 0xffff && fbrd != 0) {
+        if ibrd == 0 || (ibrd == 0xffff && fbrd != 0) || ibrd > 0xffff {
             return Err(Error::InvalidParameter);
         }
 
