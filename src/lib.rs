@@ -235,7 +235,7 @@ where
         } | match config.stop_bits {
             StopBits::One => LineControlRegister::empty(),
             StopBits::Two => LineControlRegister::STP2,
-        };
+        } | LineControlRegister::FEN;
 
         unsafe {
             self.regs.uartrsr_ecr.write(0);
