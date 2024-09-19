@@ -186,6 +186,28 @@ pub struct LineConfig {
     pub stop_bits: StopBits,
 }
 
+/// UART peripheral identification structure
+pub struct Identification {
+    part_number: u16,
+    designer: u8,
+    revision_number: u8,
+    configuration: u8,
+}
+
+impl Identification {
+    const PART_NUMBER: u16 = 0x11;
+    const DESIGNER_ARM: u8 = b'A';
+    const REVISION_MAX: u8 = 0x03;
+    const CONFIGURATION: u8 = 0x00;
+
+    pub fn is_valid(&self) -> bool {
+        self.part_number == Self::PART_NUMBER
+            && self.designer == Self::DESIGNER_ARM
+            && self.revision_number <= Self::REVISION_MAX
+            && self.configuration == Self::CONFIGURATION
+    }
+}
+
 /// PL011 UART error type
 #[derive(Debug)]
 pub enum Error {
@@ -308,6 +330,23 @@ where
     pub fn write_word(&self, word: u8) {
         unsafe {
             self.regs.uartdr.write(word as u32);
+        }
+    }
+
+    /// Read UART peripheral identification structure
+    pub fn read_identification(&self) -> Identification {
+        let id: [u32; 4] = [
+            self.regs.uartperiphid0.read(),
+            self.regs.uartperiphid1.read(),
+            self.regs.uartperiphid2.read(),
+            self.regs.uartperiphid3.read(),
+        ];
+
+        Identification {
+            part_number: (id[0] & 0xff) as u16 | ((id[1] & 0x0f) << 8) as u16,
+            designer: ((id[1] & 0xf0) >> 4) as u8 | ((id[2] & 0x0f) << 4) as u8,
+            revision_number: ((id[2] & 0xf0) >> 4) as u8,
+            configuration: (id[3] & 0xff) as u8,
         }
     }
 
