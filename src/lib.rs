@@ -209,7 +209,7 @@ impl Identification {
 }
 
 /// PL011 UART error type
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Error {
     InvalidParameter,
     Overrun,
@@ -509,7 +509,583 @@ where
     }
 }
 
-#[test]
-fn test_pl011_size() {
-    assert_eq!(core::mem::size_of::<PL011Registers>(), 0x1000);
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    struct FakePL011Registers {
+        regs: [u32; 1024],
+    }
+
+    impl FakePL011Registers {
+        fn new() -> Self {
+            Self { regs: [0u32; 1024] }
+        }
+
+        fn clear(&mut self) {
+            self.regs.fill(0);
+        }
+
+        fn reg_write(&mut self, offset: usize, value: u32) {
+            self.regs[offset / 4] = value;
+        }
+
+        fn reg_read(&self, offset: usize) -> u32 {
+            self.regs[offset / 4]
+        }
+
+        fn get(&mut self) -> RegsRef {
+            RegsRef { regs: &self.regs }
+        }
+    }
+
+    struct RegsRef<'a> {
+        regs: &'a [u32],
+    }
+
+    impl<'a> Deref for RegsRef<'a> {
+        type Target = PL011Registers;
+
+        fn deref(&self) -> &Self::Target {
+            unsafe { &*(self.regs.as_ptr() as usize as *const Self::Target) }
+        }
+    }
+
+    #[test]
+    fn regs_size() {
+        assert_eq!(core::mem::size_of::<PL011Registers>(), 0x1000);
+    }
+
+    #[test]
+    fn enable_230400_8n1() {
+        let mut regs = FakePL011Registers::new();
+        let uart = Uart::new(regs.get());
+        let config = LineConfig {
+            data_bits: DataBits::Bits8,
+            parity: Parity::None,
+            stop_bits: StopBits::One,
+        };
+
+        // Example 3-1 from PL011 TRM
+        assert_eq!(Ok(()), uart.enable(config, 230400, 4_000_000));
+
+        assert_eq!(0x00, regs.reg_read(0x004)); // UARTSR_ECR
+        assert_eq!(1, regs.reg_read(0x024)); // UARTIBDR
+        assert_eq!(5, regs.reg_read(0x028)); // UARTFBDR
+        assert_eq!(0b01110000, regs.reg_read(0x02c)); // UARTLCR_H
+        assert_eq!(0x0301, regs.reg_read(0x030)); // UARTCR
+    }
+
+    #[test]
+    fn enable_example_baudrates() {
+        // Table 3-9
+        let mut regs = FakePL011Registers::new();
+
+        {
+            let uart = Uart::new(regs.get());
+            let config = LineConfig {
+                data_bits: DataBits::Bits8,
+                parity: Parity::None,
+                stop_bits: StopBits::One,
+            };
+
+            assert_eq!(Ok(()), uart.enable(config, 230400, 4_000_000));
+            assert_eq!(0x1, regs.reg_read(0x024)); // UARTIBDR
+            assert_eq!(0x5, regs.reg_read(0x028)); // UARTFBDR
+        }
+
+        regs.clear();
+
+        {
+            let uart = Uart::new(regs.get());
+            let config = LineConfig {
+                data_bits: DataBits::Bits8,
+                parity: Parity::None,
+                stop_bits: StopBits::One,
+            };
+
+            assert_eq!(Ok(()), uart.enable(config, 115200, 4_000_000));
+            assert_eq!(0x2, regs.reg_read(0x024)); // UARTIBDR
+            assert_eq!(0xb, regs.reg_read(0x028)); // UARTFBDR
+        }
+
+        regs.clear();
+
+        {
+            let uart = Uart::new(regs.get());
+            let config = LineConfig {
+                data_bits: DataBits::Bits8,
+                parity: Parity::None,
+                stop_bits: StopBits::One,
+            };
+
+            assert_eq!(Ok(()), uart.enable(config, 76800, 4_000_000));
+            assert_eq!(0x3, regs.reg_read(0x024)); // UARTIBDR
+            assert_eq!(0x10, regs.reg_read(0x028)); // UARTFBDR
+        }
+
+        regs.clear();
+
+        {
+            let uart = Uart::new(regs.get());
+            let config = LineConfig {
+                data_bits: DataBits::Bits8,
+                parity: Parity::None,
+                stop_bits: StopBits::One,
+            };
+
+            assert_eq!(Ok(()), uart.enable(config, 38400, 4_000_000));
+            assert_eq!(0x6, regs.reg_read(0x024)); // UARTIBDR
+            assert_eq!(0x21, regs.reg_read(0x028)); // UARTFBDR
+        }
+
+        regs.clear();
+
+        {
+            let uart = Uart::new(regs.get());
+            let config = LineConfig {
+                data_bits: DataBits::Bits8,
+                parity: Parity::None,
+                stop_bits: StopBits::One,
+            };
+
+            assert_eq!(Ok(()), uart.enable(config, 14400, 4_000_000));
+            assert_eq!(0x11, regs.reg_read(0x024)); // UARTIBDR
+            assert_eq!(0x17, regs.reg_read(0x028)); // UARTFBDR
+        }
+
+        regs.clear();
+
+        {
+            let uart = Uart::new(regs.get());
+            let config = LineConfig {
+                data_bits: DataBits::Bits8,
+                parity: Parity::None,
+                stop_bits: StopBits::One,
+            };
+
+            assert_eq!(Ok(()), uart.enable(config, 2400, 4_000_000));
+            assert_eq!(0x68, regs.reg_read(0x024)); // UARTIBDR
+            assert_eq!(0xb, regs.reg_read(0x028)); // UARTFBDR
+        }
+
+        regs.clear();
+
+        {
+            let uart = Uart::new(regs.get());
+            let config = LineConfig {
+                data_bits: DataBits::Bits8,
+                parity: Parity::None,
+                stop_bits: StopBits::One,
+            };
+
+            assert_eq!(Ok(()), uart.enable(config, 110, 4_000_000));
+            assert_eq!(0x8e0, regs.reg_read(0x024)); // UARTIBDR
+            assert_eq!(0x2f, regs.reg_read(0x028)); // UARTFBDR
+        }
+    }
+
+    #[test]
+    fn enable_invalid_baudrates() {
+        let mut regs = FakePL011Registers::new();
+        let uart = Uart::new(regs.get());
+
+        {
+            let config = LineConfig {
+                data_bits: DataBits::Bits8,
+                parity: Parity::None,
+                stop_bits: StopBits::One,
+            };
+
+            assert_eq!(
+                Err(Error::InvalidParameter),
+                uart.enable(config, 0, 4_000_000)
+            );
+        }
+
+        {
+            let config = LineConfig {
+                data_bits: DataBits::Bits8,
+                parity: Parity::None,
+                stop_bits: StopBits::One,
+            };
+            assert_eq!(
+                Err(Error::InvalidParameter),
+                uart.enable(config, 1, 1048561)
+            );
+        }
+
+        {
+            let config = LineConfig {
+                data_bits: DataBits::Bits8,
+                parity: Parity::None,
+                stop_bits: StopBits::One,
+            };
+            assert_eq!(
+                Err(Error::InvalidParameter),
+                uart.enable(config, 1, 100_000_000)
+            );
+        }
+
+        {
+            let config = LineConfig {
+                data_bits: DataBits::Bits8,
+                parity: Parity::None,
+                stop_bits: StopBits::One,
+            };
+            assert_eq!(Err(Error::InvalidParameter), uart.enable(config, 1, 1));
+        }
+    }
+
+    #[test]
+    fn enable_lineconfigs() {
+        let mut regs = FakePL011Registers::new();
+        {
+            // 8 bits, even parity, 2 stop bits
+            let uart = Uart::new(regs.get());
+            let config = LineConfig {
+                data_bits: DataBits::Bits7,
+                parity: Parity::Even,
+                stop_bits: StopBits::Two,
+            };
+
+            assert_eq!(Ok(()), uart.enable(config, 230400, 4_000_000));
+            assert_eq!(0b01011110, regs.reg_read(0x02c)); // UARTLCR_H
+        }
+
+        regs.clear();
+
+        {
+            // 6 bits, odd parity, 1 stop bit
+            let mut regs = FakePL011Registers::new();
+            let uart = Uart::new(regs.get());
+            let config = LineConfig {
+                data_bits: DataBits::Bits6,
+                parity: Parity::Odd,
+                stop_bits: StopBits::One,
+            };
+
+            assert_eq!(Ok(()), uart.enable(config, 230400, 4_000_000));
+            assert_eq!(0b00110010, regs.reg_read(0x02c)); // UARTLCR_H
+        }
+
+        regs.clear();
+
+        {
+            // 5 bits, one parity, 1 stop bit
+            let mut regs = FakePL011Registers::new();
+            let uart = Uart::new(regs.get());
+            let config = LineConfig {
+                data_bits: DataBits::Bits5,
+                parity: Parity::One,
+                stop_bits: StopBits::One,
+            };
+
+            assert_eq!(Ok(()), uart.enable(config, 230400, 4_000_000));
+            assert_eq!(0b10010010, regs.reg_read(0x02c)); // UARTLCR_H
+        }
+
+        {
+            // 5 bits, zero paraty, 2 stop bit
+            let mut regs = FakePL011Registers::new();
+            let uart = Uart::new(regs.get());
+            let config = LineConfig {
+                data_bits: DataBits::Bits5,
+                parity: Parity::Zero,
+                stop_bits: StopBits::Two,
+            };
+
+            assert_eq!(Ok(()), uart.enable(config, 230400, 4_000_000));
+            assert_eq!(0b10011110, regs.reg_read(0x02c)); // UARTLCR_H
+        }
+    }
+
+    #[test]
+    fn disable() {
+        let mut regs = FakePL011Registers::new();
+        let uart = Uart::new(regs.get());
+        let config = LineConfig {
+            data_bits: DataBits::Bits8,
+            parity: Parity::None,
+            stop_bits: StopBits::One,
+        };
+
+        assert_eq!(Ok(()), uart.enable(config, 230400, 4_000_000));
+        uart.disable();
+        assert_eq!(0, regs.reg_read(0x030)); // UARTCR
+    }
+
+    #[test]
+    fn rx_fifo_empty() {
+        let mut regs = FakePL011Registers::new();
+        {
+            let uart = Uart::new(regs.get());
+            assert_eq!(false, uart.is_rx_fifo_empty());
+        }
+
+        {
+            regs.reg_write(0x018, 1 << 4);
+            let uart = Uart::new(regs.get());
+            assert_eq!(true, uart.is_rx_fifo_empty());
+        }
+    }
+
+    #[test]
+    fn rx_fifo_full() {
+        let mut regs = FakePL011Registers::new();
+        {
+            let uart = Uart::new(regs.get());
+            assert_eq!(false, uart.is_rx_fifo_full());
+        }
+
+        {
+            regs.reg_write(0x018, 1 << 6);
+            let uart = Uart::new(regs.get());
+            assert_eq!(true, uart.is_rx_fifo_full());
+        }
+    }
+
+    #[test]
+    fn tx_fifo_empty() {
+        let mut regs = FakePL011Registers::new();
+        {
+            let uart = Uart::new(regs.get());
+            assert_eq!(false, uart.is_tx_fifo_empty());
+        }
+
+        {
+            regs.reg_write(0x018, 1 << 7);
+            let uart = Uart::new(regs.get());
+            assert_eq!(true, uart.is_tx_fifo_empty());
+        }
+    }
+
+    #[test]
+    fn tx_fifo_full() {
+        let mut regs = FakePL011Registers::new();
+        {
+            let uart = Uart::new(regs.get());
+            assert_eq!(false, uart.is_tx_fifo_full());
+        }
+
+        {
+            regs.reg_write(0x018, 1 << 5);
+            let uart = Uart::new(regs.get());
+            assert_eq!(true, uart.is_tx_fifo_full());
+        }
+    }
+
+    #[test]
+    fn busy() {
+        let mut regs = FakePL011Registers::new();
+        {
+            let uart = Uart::new(regs.get());
+            assert_eq!(false, uart.is_busy());
+        }
+
+        {
+            regs.reg_write(0x018, 1 << 3);
+            let uart = Uart::new(regs.get());
+            assert_eq!(true, uart.is_busy());
+        }
+    }
+
+    #[test]
+    fn read_word() {
+        let mut regs = FakePL011Registers::new();
+
+        {
+            regs.reg_write(0x000, 1 << 11);
+
+            let uart = Uart::new(regs.get());
+            assert_eq!(Err(Error::Overrun), uart.read_word());
+        }
+
+        {
+            regs.reg_write(0x000, 1 << 10);
+
+            let uart = Uart::new(regs.get());
+            assert_eq!(Err(Error::Break), uart.read_word());
+        }
+
+        {
+            regs.reg_write(0x000, 1 << 9);
+
+            let uart = Uart::new(regs.get());
+            assert_eq!(Err(Error::Parity), uart.read_word());
+        }
+
+        {
+            regs.reg_write(0x000, 1 << 8);
+
+            let uart = Uart::new(regs.get());
+            assert_eq!(Err(Error::Framing), uart.read_word());
+        }
+
+        {
+            regs.reg_write(0x000, 0x41);
+
+            let uart = Uart::new(regs.get());
+            assert_eq!(Ok(0x41), uart.read_word());
+        }
+    }
+
+    #[test]
+    fn write_word() {
+        let mut regs = FakePL011Registers::new();
+
+        let uart = Uart::new(regs.get());
+        uart.write_word(0x41);
+
+        assert_eq!(0x41, regs.reg_read(0x000));
+    }
+
+    #[test]
+    fn read_identification() {
+        let mut regs = FakePL011Registers::new();
+
+        regs.reg_write(0xfe0, 0x11);
+        regs.reg_write(0xfe4, 0x10);
+        regs.reg_write(0xfe8, 0x34);
+        regs.reg_write(0xfec, 0x00);
+
+        let uart = Uart::new(regs.get());
+        let identification = uart.read_identification();
+        assert_eq!(0x0011, identification.part_number);
+        assert_eq!(0x41, identification.designer);
+        assert_eq!(0x03, identification.revision_number);
+        assert_eq!(0x00, identification.configuration);
+        assert_eq!(true, identification.is_valid());
+    }
+
+    #[test]
+    fn error_kind() {
+        assert_eq!(
+            serial::ErrorKind::Other,
+            serial::Error::kind(&Error::InvalidParameter)
+        );
+
+        assert_eq!(
+            serial::ErrorKind::Overrun,
+            serial::Error::kind(&Error::Overrun)
+        );
+
+        assert_eq!(serial::ErrorKind::Other, serial::Error::kind(&Error::Break));
+
+        assert_eq!(
+            serial::ErrorKind::Parity,
+            serial::Error::kind(&Error::Parity)
+        );
+
+        assert_eq!(
+            serial::ErrorKind::FrameFormat,
+            serial::Error::kind(&Error::Framing)
+        );
+
+        assert_eq!(
+            embedded_io::ErrorKind::Other,
+            embedded_io::Error::kind(&Error::Framing)
+        );
+    }
+
+    #[test]
+    fn serial_write() {
+        let mut regs = FakePL011Registers::new();
+
+        {
+            let mut uart = Uart::new(regs.get());
+            assert_eq!(Ok(()), serial::Write::write(&mut uart, 0x41));
+            assert_eq!(0x41, regs.reg_read(0x000));
+        }
+
+        regs.clear();
+
+        {
+            regs.reg_write(0x018, 1 << 5);
+            let mut uart = Uart::new(regs.get());
+            assert_eq!(
+                Err(nb::Error::WouldBlock),
+                serial::Write::write(&mut uart, 0x41)
+            );
+        }
+
+        regs.clear();
+
+        {
+            let mut uart = Uart::new(regs.get());
+            assert_eq!(Ok(()), serial::Write::flush(&mut uart));
+        }
+        regs.clear();
+
+        {
+            regs.reg_write(0x018, 1 << 3);
+            let mut uart = Uart::new(regs.get());
+            assert_eq!(Err(nb::Error::WouldBlock), serial::Write::flush(&mut uart));
+        }
+    }
+
+    #[test]
+    fn serial_read() {
+        let mut regs = FakePL011Registers::new();
+
+        {
+            regs.reg_write(0x000, 0x41);
+
+            let mut uart = Uart::new(regs.get());
+            assert_eq!(Ok(0x41), serial::Read::read(&mut uart));
+        }
+
+        regs.clear();
+
+        {
+            regs.reg_write(0x000, 0x41);
+
+            let mut uart = Uart::new(regs.get());
+            assert_eq!(Ok(0x41), serial::Read::read(&mut uart));
+        }
+
+        regs.clear();
+
+        {
+            regs.reg_write(0x000, 1 << 11);
+
+            let mut uart = Uart::new(regs.get());
+            assert_eq!(
+                Err(nb::Error::Other(Error::Overrun)),
+                serial::Read::read(&mut uart)
+            );
+        }
+
+        regs.clear();
+
+        {
+            regs.reg_write(0x018, 1 << 4);
+
+            let mut uart = Uart::new(regs.get());
+            assert_eq!(Err(nb::Error::WouldBlock), serial::Read::read(&mut uart));
+        }
+    }
+
+    #[test]
+    fn embeddeio_write() {
+        let mut regs = FakePL011Registers::new();
+        let mut uart = Uart::new(regs.get());
+        assert_eq!(Ok(2), embedded_io::Write::write(&mut uart, &[1, 2]));
+        assert_eq!(Ok(()), embedded_io::Write::flush(&mut uart));
+    }
+
+    #[test]
+    fn embeddeio_read() {
+        let mut regs = FakePL011Registers::new();
+        let mut uart = Uart::new(regs.get());
+        let mut data = [0u8; 2];
+        assert_eq!(Ok(2), embedded_io::Read::read(&mut uart, &mut data));
+    }
+
+    #[test]
+    fn core_write() {
+        let mut regs = FakePL011Registers::new();
+        let mut uart = Uart::new(regs.get());
+        assert_eq!(Ok(()), core::fmt::Write::write_str(&mut uart, "hello"));
+    }
 }
