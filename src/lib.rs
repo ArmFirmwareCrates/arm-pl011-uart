@@ -1,9 +1,33 @@
 // SPDX-FileCopyrightText: Copyright 2023-2024 Arm Limited and/or its affiliates <open-source-office@arm.com>
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
-//! Arm PrimeCell UART (PL011) driver
+//! # Arm PrimeCell UART (PL011) driver
 //!
 //! Driver implementation for the [PL011 UART peripheral](https://developer.arm.com/documentation/ddi0183/latest/).
+//!
+//! The main concept of the driver is that the `Uart` implementation expects a `Deref<Target = PL011Registers>` type.
+//! This type can be an actual reference of a `PL011Registers` structure or any other PAC specific type as long as it
+//! implements the required `Deref` trait. This also allows having custom wrappers around `PL011Registers` for project
+//! specific reasons, like virtual memory mapping of peripherals.
+//!
+//! ## Implemented features
+//! * Enabling/disabling UART peripheral which includes configuring the data bit number, parity settings,
+//!   stop bit count and baudrate.
+//! * Checking various status flags
+//! * Non-blocking read/write functions
+//! * Handling UART errors
+//! * Reading UART identification structure
+//! * 98% unit test coverage
+//! * Implementing various traits
+//!   * `embedded_hal_nb::serial::{Write, Read}`
+//!   * `embedded_io::{Write, Read}`
+//!   * `core::fmt::Write`
+//!
+//! ## Future plans
+//! * Implemeting interrupt enablement
+//! * Handling modem control and status signals
+//! * Adding IrDA support
+//! * Adding peripheral testing
 
 #![no_std]
 
@@ -235,7 +259,7 @@ where
         Self { regs }
     }
 
-    /// Configure and enable uart
+    /// Configure and enable UART
     pub fn enable(&self, config: LineConfig, baud_rate: u32, sysclk: u32) -> Result<(), Error> {
         // Baud rate
         let (uartibrd, uartfbrd) = Self::calculate_baud_rate_divisor(baud_rate, sysclk)?;
@@ -307,7 +331,7 @@ where
         self.regs.uartfr.read().contains(FlagsRegister::BUSY)
     }
 
-    /// Read single byte from the UART
+    /// Non-blocking read of a single byte from the UART
     pub fn read_word(&self) -> Result<u8, Error> {
         let dr = self.regs.uartdr.read();
 
@@ -326,7 +350,7 @@ where
         Ok(dr as u8)
     }
 
-    /// Write single byte to the UART
+    /// Non-blocking write of a single byte to the UART
     pub fn write_word(&self, word: u8) {
         unsafe {
             self.regs.uartdr.write(word as u32);
