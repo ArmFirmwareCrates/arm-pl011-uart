@@ -32,10 +32,11 @@
 #![no_std]
 
 use bitflags::bitflags;
-use core::ops::Deref;
+use core::ops::DerefMut;
+use core::ptr::addr_of;
+use core::ptr::addr_of_mut;
 use embedded_hal_nb::nb;
 use embedded_hal_nb::serial;
-use volatile_register::{RO, RW, WO};
 
 // Register descriptions
 
@@ -52,8 +53,6 @@ bitflags! {
         const PE = 1 << 9;
         /// Framing error
         const FE = 1 << 8;
-        /// Data
-        const DATA_MASK = 0xff;
     }
 
     /// Receive Status Register/Error Clear Register, UARTRSR/UARTECR
@@ -151,31 +150,31 @@ bitflags! {
 /// PL011 register map
 #[repr(C, align(4))]
 pub struct PL011Registers {
-    uartdr: RW<u32>,                    // 0x000 Data Register
-    uartrsr_ecr: RW<u32>,               // 0x004 Receive Status Register/Error Clear Register
-    reserved_08: [u32; 4],              // 0x008 - 0x014
-    uartfr: RO<FlagsRegister>,          // 0x018 Flag Register
-    reserved_1c: u32,                   // 0x01C
-    uartilpr: RW<u32>,                  // 0x020 IrDA Low-Power Counter Register
-    uartibrd: RW<u32>,                  // 0x024 Integer Baud Rate Register
-    uartfbrd: RW<u32>,                  // 0x028 Fractional Baud Rate Register
-    uartlcr_h: RW<LineControlRegister>, // 0x02C Line Control Register
-    uartcr: RW<ControlRegister>,        // 0x030 Control Register
-    uartifls: RW<u32>,                  // 0x034 Interrupt FIFO Level Select Register
-    uartimsc: RW<u32>,                  // 0x038 Interrupt Mask Set/Clear Register
-    uartris: RW<u32>,                   // 0x03C Raw Interrupt Status Register
-    uartmis: RW<u32>,                   // 0x040 Masked INterrupt Status Register
-    uarticr: WO<u32>,                   // 0x044 Interrupt Clear Register
-    uartdmacr: RW<u32>,                 // 0x048 DMA control Register
-    reserved_4c: [u32; 997],            // 0x04C - 0xFDC
-    uartperiphid0: RO<u32>,             // 0xFE0 UARTPeriphID0 Register
-    uartperiphid1: RO<u32>,             // 0xFE4 UARTPeriphID1 Register
-    uartperiphid2: RO<u32>,             // 0xFE8 UARTPeriphID2 Register
-    uartperiphid3: RO<u32>,             // 0xFEC UARTPeriphID3 Register
-    uartpcellid0: RO<u32>,              // 0xFF0 UARTPCellID0 Register
-    uartpcellid1: RO<u32>,              // 0xFF4 UARTPCellID1 Register
-    uartpcellid2: RO<u32>,              // 0xFF8 UARTPCellID2 Register
-    uartpcellid3: RO<u32>,              // 0xFFC UARTPCellID3 Register
+    uartdr: u32,                    // 0x000 Data Register
+    uartrsr_ecr: u32,               // 0x004 Receive Status Register/Error Clear Register
+    reserved_08: [u32; 4],          // 0x008 - 0x014
+    uartfr: FlagsRegister,          // 0x018 Flag Register
+    reserved_1c: u32,               // 0x01C
+    uartilpr: u32,                  // 0x020 IrDA Low-Power Counter Register
+    uartibrd: u32,                  // 0x024 Integer Baud Rate Register
+    uartfbrd: u32,                  // 0x028 Fractional Baud Rate Register
+    uartlcr_h: LineControlRegister, // 0x02C Line Control Register
+    uartcr: ControlRegister,        // 0x030 Control Register
+    uartifls: u32,                  // 0x034 Interrupt FIFO Level Select Register
+    uartimsc: u32,                  // 0x038 Interrupt Mask Set/Clear Register
+    uartris: u32,                   // 0x03C Raw Interrupt Status Register
+    uartmis: u32,                   // 0x040 Masked INterrupt Status Register
+    uarticr: u32,                   // 0x044 Interrupt Clear Register
+    uartdmacr: u32,                 // 0x048 DMA control Register
+    reserved_4c: [u32; 997],        // 0x04C - 0xFDC
+    uartperiphid0: u32,             // 0xFE0 UARTPeriphID0 Register
+    uartperiphid1: u32,             // 0xFE4 UARTPeriphID1 Register
+    uartperiphid2: u32,             // 0xFE8 UARTPeriphID2 Register
+    uartperiphid3: u32,             // 0xFEC UARTPeriphID3 Register
+    uartpcellid0: u32,              // 0xFF0 UARTPCellID0 Register
+    uartpcellid1: u32,              // 0xFF4 UARTPCellID1 Register
+    uartpcellid2: u32,              // 0xFF8 UARTPCellID2 Register
+    uartpcellid3: u32,              // 0xFFC UARTPCellID3 Register
 }
 
 // Config
@@ -245,14 +244,14 @@ pub enum Error {
 /// PL011 UART implementation
 pub struct Uart<R>
 where
-    R: Deref<Target = PL011Registers>,
+    R: DerefMut<Target = PL011Registers>,
 {
     regs: R,
 }
 
 impl<R> Uart<R>
 where
-    R: Deref<Target = PL011Registers>,
+    R: DerefMut<Target = PL011Registers>,
 {
     /// Create new UART instance
     pub fn new(regs: R) -> Self {
@@ -260,7 +259,7 @@ where
     }
 
     /// Configure and enable UART
-    pub fn enable(&self, config: LineConfig, baud_rate: u32, sysclk: u32) -> Result<(), Error> {
+    pub fn enable(&mut self, config: LineConfig, baud_rate: u32, sysclk: u32) -> Result<(), Error> {
         // Baud rate
         let (uartibrd, uartfbrd) = Self::calculate_baud_rate_divisor(baud_rate, sysclk)?;
 
@@ -284,56 +283,76 @@ where
         } | LineControlRegister::FEN;
 
         unsafe {
-            self.regs.uartrsr_ecr.write(0);
-            self.regs.uartcr.write(ControlRegister::empty());
+            addr_of_mut!(self.regs.uartrsr_ecr).write_volatile(0);
+            addr_of_mut!(self.regs.uartcr).write_volatile(ControlRegister::empty());
 
-            self.regs.uartibrd.write(uartibrd);
-            self.regs.uartfbrd.write(uartfbrd);
-            self.regs.uartlcr_h.write(line_control);
+            addr_of_mut!(self.regs.uartibrd).write_volatile(uartibrd);
+            addr_of_mut!(self.regs.uartfbrd).write_volatile(uartfbrd);
+            addr_of_mut!(self.regs.uartlcr_h).write_volatile(line_control);
 
-            self.regs
-                .uartcr
-                .write(ControlRegister::RXE | ControlRegister::TXE | ControlRegister::UARTEN);
+            addr_of_mut!(self.regs.uartcr).write_volatile(
+                ControlRegister::RXE | ControlRegister::TXE | ControlRegister::UARTEN,
+            );
         }
 
         Ok(())
     }
 
     /// Disable UART
-    pub fn disable(&self) {
+    pub fn disable(&mut self) {
         unsafe {
-            self.regs.uartcr.write(ControlRegister::empty());
+            addr_of_mut!(self.regs.uartcr).write_volatile(ControlRegister::empty());
         }
     }
 
     /// Check if receive FIFO is empty
     pub fn is_rx_fifo_empty(&self) -> bool {
-        self.regs.uartfr.read().contains(FlagsRegister::RXFE)
+        unsafe {
+            addr_of!(self.regs.uartfr)
+                .read_volatile()
+                .contains(FlagsRegister::RXFE)
+        }
     }
 
     /// Check if receive FIFO is full
     pub fn is_rx_fifo_full(&self) -> bool {
-        self.regs.uartfr.read().contains(FlagsRegister::RXFF)
+        unsafe {
+            addr_of!(self.regs.uartfr)
+                .read_volatile()
+                .contains(FlagsRegister::RXFF)
+        }
     }
 
     /// Check if transmit FIFO is empty
     pub fn is_tx_fifo_empty(&self) -> bool {
-        self.regs.uartfr.read().contains(FlagsRegister::TXFE)
+        unsafe {
+            addr_of!(self.regs.uartfr)
+                .read_volatile()
+                .contains(FlagsRegister::TXFE)
+        }
     }
 
     /// Check if transmit FIFO is full
     pub fn is_tx_fifo_full(&self) -> bool {
-        self.regs.uartfr.read().contains(FlagsRegister::TXFF)
+        unsafe {
+            addr_of!(self.regs.uartfr)
+                .read_volatile()
+                .contains(FlagsRegister::TXFF)
+        }
     }
 
     /// Check if UART is busy
     pub fn is_busy(&self) -> bool {
-        self.regs.uartfr.read().contains(FlagsRegister::BUSY)
+        unsafe {
+            addr_of!(self.regs.uartfr)
+                .read_volatile()
+                .contains(FlagsRegister::BUSY)
+        }
     }
 
     /// Non-blocking read of a single byte from the UART
     pub fn read_word(&self) -> Result<u8, Error> {
-        let dr = self.regs.uartdr.read();
+        let dr = unsafe { addr_of!(self.regs.uartdr).read_volatile() };
 
         let flags = DataRegister::from_bits_truncate(dr);
 
@@ -351,20 +370,22 @@ where
     }
 
     /// Non-blocking write of a single byte to the UART
-    pub fn write_word(&self, word: u8) {
+    pub fn write_word(&mut self, word: u8) {
         unsafe {
-            self.regs.uartdr.write(word as u32);
+            addr_of_mut!(self.regs.uartdr).write_volatile(word as u32);
         }
     }
 
     /// Read UART peripheral identification structure
     pub fn read_identification(&self) -> Identification {
-        let id: [u32; 4] = [
-            self.regs.uartperiphid0.read(),
-            self.regs.uartperiphid1.read(),
-            self.regs.uartperiphid2.read(),
-            self.regs.uartperiphid3.read(),
-        ];
+        let id: [u32; 4] = unsafe {
+            [
+                addr_of!(self.regs.uartperiphid0).read_volatile(),
+                addr_of!(self.regs.uartperiphid1).read_volatile(),
+                addr_of!(self.regs.uartperiphid2).read_volatile(),
+                addr_of!(self.regs.uartperiphid3).read_volatile(),
+            ]
+        };
 
         Identification {
             part_number: (id[0] & 0xff) as u16 | ((id[1] & 0x0f) << 8) as u16,
@@ -403,7 +424,7 @@ where
 
 impl<R> serial::ErrorType for Uart<R>
 where
-    R: Deref<Target = PL011Registers>,
+    R: DerefMut<Target = PL011Registers>,
 {
     type Error = Error;
 }
@@ -422,7 +443,7 @@ impl serial::Error for Error {
 
 impl<R> serial::Write for Uart<R>
 where
-    R: Deref<Target = PL011Registers>,
+    R: DerefMut<Target = PL011Registers>,
 {
     fn write(&mut self, word: u8) -> nb::Result<(), Self::Error> {
         if self.is_tx_fifo_full() {
@@ -445,7 +466,7 @@ where
 
 impl<R> serial::Read for Uart<R>
 where
-    R: Deref<Target = PL011Registers>,
+    R: DerefMut<Target = PL011Registers>,
 {
     fn read(&mut self) -> nb::Result<u8, Self::Error> {
         if self.is_rx_fifo_empty() {
@@ -462,7 +483,7 @@ where
 // embedded-io implementation
 impl<R> embedded_io::ErrorType for Uart<R>
 where
-    R: Deref<Target = PL011Registers>,
+    R: DerefMut<Target = PL011Registers>,
 {
     type Error = Error;
 }
@@ -475,7 +496,7 @@ impl embedded_io::Error for Error {
 
 impl<R> embedded_io::Write for Uart<R>
 where
-    R: Deref<Target = PL011Registers>,
+    R: DerefMut<Target = PL011Registers>,
 {
     fn write(&mut self, buf: &[u8]) -> Result<usize, Self::Error> {
         for word in buf {
@@ -501,7 +522,7 @@ where
 
 impl<R> embedded_io::Read for Uart<R>
 where
-    R: Deref<Target = PL011Registers>,
+    R: DerefMut<Target = PL011Registers>,
 {
     fn read(&mut self, buf: &mut [u8]) -> Result<usize, Self::Error> {
         let mut index = 0;
@@ -525,7 +546,7 @@ where
 
 impl<R> core::fmt::Write for Uart<R>
 where
-    R: Deref<Target = PL011Registers>,
+    R: DerefMut<Target = PL011Registers>,
 {
     fn write_str(&mut self, s: &str) -> core::fmt::Result {
         embedded_io::Write::write(self, s.as_bytes()).map_err(|_| core::fmt::Error)?;
@@ -536,6 +557,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use core::ops::Deref;
 
     struct FakePL011Registers {
         regs: [u32; 1024],
@@ -575,6 +597,12 @@ mod tests {
         }
     }
 
+    impl<'a> DerefMut for RegsRef<'a> {
+        fn deref_mut(&mut self) -> &mut Self::Target {
+            unsafe { &mut *(self.regs.as_ptr() as usize as *mut Self::Target) }
+        }
+    }
+
     #[test]
     fn regs_size() {
         assert_eq!(core::mem::size_of::<PL011Registers>(), 0x1000);
@@ -583,7 +611,7 @@ mod tests {
     #[test]
     fn enable_230400_8n1() {
         let mut regs = FakePL011Registers::new();
-        let uart = Uart::new(regs.get());
+        let mut uart = Uart::new(regs.get());
         let config = LineConfig {
             data_bits: DataBits::Bits8,
             parity: Parity::None,
@@ -606,7 +634,7 @@ mod tests {
         let mut regs = FakePL011Registers::new();
 
         {
-            let uart = Uart::new(regs.get());
+            let mut uart = Uart::new(regs.get());
             let config = LineConfig {
                 data_bits: DataBits::Bits8,
                 parity: Parity::None,
@@ -621,7 +649,7 @@ mod tests {
         regs.clear();
 
         {
-            let uart = Uart::new(regs.get());
+            let mut uart = Uart::new(regs.get());
             let config = LineConfig {
                 data_bits: DataBits::Bits8,
                 parity: Parity::None,
@@ -636,7 +664,7 @@ mod tests {
         regs.clear();
 
         {
-            let uart = Uart::new(regs.get());
+            let mut uart = Uart::new(regs.get());
             let config = LineConfig {
                 data_bits: DataBits::Bits8,
                 parity: Parity::None,
@@ -651,7 +679,7 @@ mod tests {
         regs.clear();
 
         {
-            let uart = Uart::new(regs.get());
+            let mut uart = Uart::new(regs.get());
             let config = LineConfig {
                 data_bits: DataBits::Bits8,
                 parity: Parity::None,
@@ -666,7 +694,7 @@ mod tests {
         regs.clear();
 
         {
-            let uart = Uart::new(regs.get());
+            let mut uart = Uart::new(regs.get());
             let config = LineConfig {
                 data_bits: DataBits::Bits8,
                 parity: Parity::None,
@@ -681,7 +709,7 @@ mod tests {
         regs.clear();
 
         {
-            let uart = Uart::new(regs.get());
+            let mut uart = Uart::new(regs.get());
             let config = LineConfig {
                 data_bits: DataBits::Bits8,
                 parity: Parity::None,
@@ -696,7 +724,7 @@ mod tests {
         regs.clear();
 
         {
-            let uart = Uart::new(regs.get());
+            let mut uart = Uart::new(regs.get());
             let config = LineConfig {
                 data_bits: DataBits::Bits8,
                 parity: Parity::None,
@@ -712,7 +740,7 @@ mod tests {
     #[test]
     fn enable_invalid_baudrates() {
         let mut regs = FakePL011Registers::new();
-        let uart = Uart::new(regs.get());
+        let mut uart = Uart::new(regs.get());
 
         {
             let config = LineConfig {
@@ -766,7 +794,7 @@ mod tests {
         let mut regs = FakePL011Registers::new();
         {
             // 8 bits, even parity, 2 stop bits
-            let uart = Uart::new(regs.get());
+            let mut uart = Uart::new(regs.get());
             let config = LineConfig {
                 data_bits: DataBits::Bits7,
                 parity: Parity::Even,
@@ -782,7 +810,7 @@ mod tests {
         {
             // 6 bits, odd parity, 1 stop bit
             let mut regs = FakePL011Registers::new();
-            let uart = Uart::new(regs.get());
+            let mut uart = Uart::new(regs.get());
             let config = LineConfig {
                 data_bits: DataBits::Bits6,
                 parity: Parity::Odd,
@@ -798,7 +826,7 @@ mod tests {
         {
             // 5 bits, one parity, 1 stop bit
             let mut regs = FakePL011Registers::new();
-            let uart = Uart::new(regs.get());
+            let mut uart = Uart::new(regs.get());
             let config = LineConfig {
                 data_bits: DataBits::Bits5,
                 parity: Parity::One,
@@ -812,7 +840,7 @@ mod tests {
         {
             // 5 bits, zero paraty, 2 stop bit
             let mut regs = FakePL011Registers::new();
-            let uart = Uart::new(regs.get());
+            let mut uart = Uart::new(regs.get());
             let config = LineConfig {
                 data_bits: DataBits::Bits5,
                 parity: Parity::Zero,
@@ -827,7 +855,7 @@ mod tests {
     #[test]
     fn disable() {
         let mut regs = FakePL011Registers::new();
-        let uart = Uart::new(regs.get());
+        let mut uart = Uart::new(regs.get());
         let config = LineConfig {
             data_bits: DataBits::Bits8,
             parity: Parity::None,
@@ -958,7 +986,7 @@ mod tests {
     fn write_word() {
         let mut regs = FakePL011Registers::new();
 
-        let uart = Uart::new(regs.get());
+        let mut uart = Uart::new(regs.get());
         uart.write_word(0x41);
 
         assert_eq!(0x41, regs.reg_read(0x000));

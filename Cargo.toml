@@ -20,4 +20,3 @@ keywords = ["arm", "pl011", "uart", "driver"]
 bitflags = "2.6"
 embedded-hal-nb = "1.0"
 embedded-io = "0.6"
-volatile-register = "0.2"
