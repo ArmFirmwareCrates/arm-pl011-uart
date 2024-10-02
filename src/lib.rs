@@ -282,6 +282,7 @@ where
             StopBits::Two => LineControlRegister::STP2,
         } | LineControlRegister::FEN;
 
+        // SAFETY: self.regs can be dereferenced as a valid PL011 register block
         unsafe {
             addr_of_mut!(self.regs.uartrsr_ecr).write_volatile(0);
             addr_of_mut!(self.regs.uartcr).write_volatile(ControlRegister::empty());
@@ -300,6 +301,7 @@ where
 
     /// Disable UART
     pub fn disable(&mut self) {
+        // SAFETY: self.regs can be dereferenced as a valid PL011 register block
         unsafe {
             addr_of_mut!(self.regs.uartcr).write_volatile(ControlRegister::empty());
         }
@@ -307,6 +309,7 @@ where
 
     /// Check if receive FIFO is empty
     pub fn is_rx_fifo_empty(&self) -> bool {
+        // SAFETY: self.regs can be dereferenced as a valid PL011 register block
         unsafe {
             addr_of!(self.regs.uartfr)
                 .read_volatile()
@@ -316,6 +319,7 @@ where
 
     /// Check if receive FIFO is full
     pub fn is_rx_fifo_full(&self) -> bool {
+        // SAFETY: self.regs can be dereferenced as a valid PL011 register block
         unsafe {
             addr_of!(self.regs.uartfr)
                 .read_volatile()
@@ -325,6 +329,7 @@ where
 
     /// Check if transmit FIFO is empty
     pub fn is_tx_fifo_empty(&self) -> bool {
+        // SAFETY: self.regs can be dereferenced as a valid PL011 register block
         unsafe {
             addr_of!(self.regs.uartfr)
                 .read_volatile()
@@ -334,6 +339,7 @@ where
 
     /// Check if transmit FIFO is full
     pub fn is_tx_fifo_full(&self) -> bool {
+        // SAFETY: self.regs can be dereferenced as a valid PL011 register block
         unsafe {
             addr_of!(self.regs.uartfr)
                 .read_volatile()
@@ -343,6 +349,7 @@ where
 
     /// Check if UART is busy
     pub fn is_busy(&self) -> bool {
+        // SAFETY: self.regs can be dereferenced as a valid PL011 register block
         unsafe {
             addr_of!(self.regs.uartfr)
                 .read_volatile()
@@ -352,6 +359,7 @@ where
 
     /// Non-blocking read of a single byte from the UART
     pub fn read_word(&self) -> Result<u8, Error> {
+        // SAFETY: self.regs can be dereferenced as a valid PL011 register block
         let dr = unsafe { addr_of!(self.regs.uartdr).read_volatile() };
 
         let flags = DataRegister::from_bits_truncate(dr);
@@ -371,6 +379,7 @@ where
 
     /// Non-blocking write of a single byte to the UART
     pub fn write_word(&mut self, word: u8) {
+        // SAFETY: self.regs can be dereferenced as a valid PL011 register block
         unsafe {
             addr_of_mut!(self.regs.uartdr).write_volatile(word as u32);
         }
@@ -378,6 +387,7 @@ where
 
     /// Read UART peripheral identification structure
     pub fn read_identification(&self) -> Identification {
+        // SAFETY: self.regs can be dereferenced as a valid PL011 register block
         let id: [u32; 4] = unsafe {
             [
                 addr_of!(self.regs.uartperiphid0).read_volatile(),
