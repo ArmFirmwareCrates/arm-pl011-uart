@@ -510,9 +510,12 @@ where
 {
     fn write(&mut self, buf: &[u8]) -> Result<usize, Self::Error> {
         for word in buf {
-            match serial::Write::write(self, *word) {
-                Err(nb::Error::Other(err)) => return Err(err),
-                _ => continue,
+            loop {
+                match serial::Write::write(self, *word) {
+                    Err(nb::Error::Other(err)) => return Err(err),
+                    Err(nb::Error::WouldBlock) => continue,
+                    Ok(()) => break,
+                }
             }
         }
 
