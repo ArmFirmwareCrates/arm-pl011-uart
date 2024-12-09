@@ -11,10 +11,9 @@ authors = [
 description = "Arm PrimeCell UART (PL011) driver"
 edition = "2021"
 license = "MIT OR Apache-2.0"
-repository = "https://git.trustedfirmware.org/rust-spmc/rust-spmc.git"
+repository = "https://git.trustedfirmware.org/rust-spmc/arm-pl011.git"
 keywords = ["arm", "pl011", "uart", "driver"]
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+categories = ["hardware-support", "embedded", "no-std", "no-std::no-alloc"]
 
 [dependencies]
 bitflags = "2.6"
