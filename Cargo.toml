@@ -15,6 +15,7 @@ repository = "https://git.trustedfirmware.org/rust-spmc/arm-pl011-uart.git"
 keywords = ["arm", "pl011", "uart", "driver"]
 categories = ["hardware-support", "embedded", "no-std", "no-std::no-alloc"]
 readme = "README.md"
+rust-version = "1.82"
 
 [dependencies]
 bitflags = "2.6"

@@ -6,8 +6,6 @@
 
 use bitflags::bitflags;
 use core::ops::DerefMut;
-use core::ptr::addr_of;
-use core::ptr::addr_of_mut;
 use embedded_hal_nb::nb;
 use embedded_hal_nb::serial;
 
@@ -257,14 +255,14 @@ where
 
         // SAFETY: self.regs can be dereferenced as a valid PL011 register block
         unsafe {
-            addr_of_mut!(self.regs.uartrsr_ecr).write_volatile(0);
-            addr_of_mut!(self.regs.uartcr).write_volatile(ControlRegister::empty());
+            (&raw mut self.regs.uartrsr_ecr).write_volatile(0);
+            (&raw mut self.regs.uartcr).write_volatile(ControlRegister::empty());
 
-            addr_of_mut!(self.regs.uartibrd).write_volatile(uartibrd);
-            addr_of_mut!(self.regs.uartfbrd).write_volatile(uartfbrd);
-            addr_of_mut!(self.regs.uartlcr_h).write_volatile(line_control);
+            (&raw mut self.regs.uartibrd).write_volatile(uartibrd);
+            (&raw mut self.regs.uartfbrd).write_volatile(uartfbrd);
+            (&raw mut self.regs.uartlcr_h).write_volatile(line_control);
 
-            addr_of_mut!(self.regs.uartcr).write_volatile(
+            (&raw mut self.regs.uartcr).write_volatile(
                 ControlRegister::RXE | ControlRegister::TXE | ControlRegister::UARTEN,
             );
         }
@@ -276,7 +274,7 @@ where
     pub fn disable(&mut self) {
         // SAFETY: self.regs can be dereferenced as a valid PL011 register block
         unsafe {
-            addr_of_mut!(self.regs.uartcr).write_volatile(ControlRegister::empty());
+            (&raw mut self.regs.uartcr).write_volatile(ControlRegister::empty());
         }
     }
 
@@ -284,7 +282,7 @@ where
     pub fn is_rx_fifo_empty(&self) -> bool {
         // SAFETY: self.regs can be dereferenced as a valid PL011 register block
         unsafe {
-            addr_of!(self.regs.uartfr)
+            (&raw const self.regs.uartfr)
                 .read_volatile()
                 .contains(FlagsRegister::RXFE)
         }
@@ -294,7 +292,7 @@ where
     pub fn is_rx_fifo_full(&self) -> bool {
         // SAFETY: self.regs can be dereferenced as a valid PL011 register block
         unsafe {
-            addr_of!(self.regs.uartfr)
+            (&raw const self.regs.uartfr)
                 .read_volatile()
                 .contains(FlagsRegister::RXFF)
         }
@@ -304,7 +302,7 @@ where
     pub fn is_tx_fifo_empty(&self) -> bool {
         // SAFETY: self.regs can be dereferenced as a valid PL011 register block
         unsafe {
-            addr_of!(self.regs.uartfr)
+            (&raw const self.regs.uartfr)
                 .read_volatile()
                 .contains(FlagsRegister::TXFE)
         }
@@ -314,7 +312,7 @@ where
     pub fn is_tx_fifo_full(&self) -> bool {
         // SAFETY: self.regs can be dereferenced as a valid PL011 register block
         unsafe {
-            addr_of!(self.regs.uartfr)
+            (&raw const self.regs.uartfr)
                 .read_volatile()
                 .contains(FlagsRegister::TXFF)
         }
@@ -324,7 +322,7 @@ where
     pub fn is_busy(&self) -> bool {
         // SAFETY: self.regs can be dereferenced as a valid PL011 register block
         unsafe {
-            addr_of!(self.regs.uartfr)
+            (&raw const self.regs.uartfr)
                 .read_volatile()
                 .contains(FlagsRegister::BUSY)
         }
@@ -333,7 +331,7 @@ where
     /// Non-blocking read of a single byte from the UART
     pub fn read_word(&self) -> Result<u8, Error> {
         // SAFETY: self.regs can be dereferenced as a valid PL011 register block
-        let dr = unsafe { addr_of!(self.regs.uartdr).read_volatile() };
+        let dr = unsafe { (&raw const self.regs.uartdr).read_volatile() };
 
         let flags = DataRegister::from_bits_truncate(dr);
 
@@ -354,7 +352,7 @@ where
     pub fn write_word(&mut self, word: u8) {
         // SAFETY: self.regs can be dereferenced as a valid PL011 register block
         unsafe {
-            addr_of_mut!(self.regs.uartdr).write_volatile(word as u32);
+            (&raw mut self.regs.uartdr).write_volatile(word as u32);
         }
     }
 
@@ -363,10 +361,10 @@ where
         // SAFETY: self.regs can be dereferenced as a valid PL011 register block
         let id: [u32; 4] = unsafe {
             [
-                addr_of!(self.regs.uartperiphid0).read_volatile(),
-                addr_of!(self.regs.uartperiphid1).read_volatile(),
-                addr_of!(self.regs.uartperiphid2).read_volatile(),
-                addr_of!(self.regs.uartperiphid3).read_volatile(),
+                (&raw const self.regs.uartperiphid0).read_volatile(),
+                (&raw const self.regs.uartperiphid1).read_volatile(),
+                (&raw const self.regs.uartperiphid2).read_volatile(),
+                (&raw const self.regs.uartperiphid3).read_volatile(),
             ]
         };
 
