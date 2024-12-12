@@ -3,7 +3,7 @@
 version = 3
 
 [[package]]
-name = "arm-pl011"
+name = "arm-pl011-uart"
 version = "0.1.0"
 dependencies = [
  "bitflags",
