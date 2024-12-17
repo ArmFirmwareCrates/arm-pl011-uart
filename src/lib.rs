@@ -570,26 +570,38 @@ mod tests {
             self.regs[offset / 4]
         }
 
-        fn get(&mut self) -> RegsRef {
-            RegsRef { regs: &self.regs }
+        fn get(&mut self) -> PL011RegsRef {
+            PL011RegsRef {
+                regs: &mut self.regs,
+            }
         }
     }
 
-    struct RegsRef<'a> {
-        regs: &'a [u32],
+    struct PL011RegsRef<'a> {
+        regs: &'a mut [u32; 1024],
     }
 
-    impl<'a> Deref for RegsRef<'a> {
+    impl<'a> Deref for PL011RegsRef<'a> {
         type Target = PL011Registers;
 
         fn deref(&self) -> &Self::Target {
-            unsafe { &*(self.regs.as_ptr() as usize as *const Self::Target) }
+            let regs_ptr = self.regs.as_ptr() as *const Self::Target;
+            assert!(regs_ptr.is_aligned());
+
+            // SAFETY: regs_ptr points to a FakePL011Registers struct's regs field, that has the
+            // same size and alignment as PL011Registers
+            unsafe { &*regs_ptr }
         }
     }
 
-    impl<'a> DerefMut for RegsRef<'a> {
+    impl<'a> DerefMut for PL011RegsRef<'a> {
         fn deref_mut(&mut self) -> &mut Self::Target {
-            unsafe { &mut *(self.regs.as_ptr() as usize as *mut Self::Target) }
+            let regs_ptr = self.regs.as_mut_ptr() as *mut Self::Target;
+            assert!(regs_ptr.is_aligned());
+
+            // SAFETY: regs_ptr points to a FakePL011Registers struct's regs field, that has the
+            // same size and alignment as PL011Registers
+            unsafe { &mut *regs_ptr }
         }
     }
 
