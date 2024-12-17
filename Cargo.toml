@@ -21,3 +21,4 @@ rust-version = "1.82"
 bitflags = "2.6"
 embedded-hal-nb = "1.0"
 embedded-io = "0.6"
+thiserror = { version = "2.0", default-features = false }
