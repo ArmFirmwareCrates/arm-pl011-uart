@@ -8,6 +8,7 @@ use bitflags::bitflags;
 use core::ops::DerefMut;
 use embedded_hal_nb::nb;
 use embedded_hal_nb::serial;
+use thiserror::Error;
 
 // Register descriptions
 
@@ -203,12 +204,17 @@ impl Identification {
 }
 
 /// PL011 UART error type
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Error, PartialEq)]
 pub enum Error {
+    #[error("Invalid parameter")]
     InvalidParameter,
+    #[error("Overrun")]
     Overrun,
+    #[error("Break")]
     Break,
+    #[error("Parity")]
     Parity,
+    #[error("Framing")]
     Framing,
 }
 
