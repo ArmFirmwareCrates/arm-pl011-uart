@@ -16,6 +16,24 @@
       "message": "Sorry, I changed my mind about my vote because I thought of something else...\n\nDon\u0027t you need to set the Rust version to 1.82 in `Cargo.toml`?",
       "revId": "5f53d21c6e4065297565afc4a7641ab7625816d8",
       "serverId": "8f6f209b-db1a-4cbf-aa44-c8bc30e9bfda"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "90d0b943_efc9baa7",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1000160
+      },
+      "writtenOn": "2024-12-18T14:59:50Z",
+      "side": 1,
+      "message": "You\u0027re right, done",
+      "parentUuid": "a80b6b75_f492d002",
+      "revId": "5f53d21c6e4065297565afc4a7641ab7625816d8",
+      "serverId": "8f6f209b-db1a-4cbf-aa44-c8bc30e9bfda"
     }
   ]
 }
