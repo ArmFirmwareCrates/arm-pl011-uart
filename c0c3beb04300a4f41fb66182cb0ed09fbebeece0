@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2d1b10fa_6a0a47ab",
+        "filename": "src/lib.rs",
+        "patchSetId": 1
+      },
+      "lineNbr": 593,
+      "author": {
+        "id": 1000309
+      },
+      "writtenOn": "2024-12-18T12:32:34Z",
+      "side": 1,
+      "message": "You could use the `zerocopy` crate to do this safely.",
+      "revId": "c0c3beb04300a4f41fb66182cb0ed09fbebeece0",
+      "serverId": "8f6f209b-db1a-4cbf-aa44-c8bc30e9bfda"
+    }
+  ]
+}
