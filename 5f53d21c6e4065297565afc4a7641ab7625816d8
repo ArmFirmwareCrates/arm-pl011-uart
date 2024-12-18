@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a80b6b75_f492d002",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1000043
+      },
+      "writtenOn": "2024-12-18T09:50:08Z",
+      "side": 1,
+      "message": "Sorry, I changed my mind about my vote because I thought of something else...\n\nDon\u0027t you need to set the Rust version to 1.82 in `Cargo.toml`?",
+      "revId": "5f53d21c6e4065297565afc4a7641ab7625816d8",
+      "serverId": "8f6f209b-db1a-4cbf-aa44-c8bc30e9bfda"
+    }
+  ]
+}
