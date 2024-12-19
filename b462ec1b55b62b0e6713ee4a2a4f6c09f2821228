@@ -22,6 +22,30 @@
       },
       "revId": "b462ec1b55b62b0e6713ee4a2a4f6c09f2821228",
       "serverId": "8f6f209b-db1a-4cbf-aa44-c8bc30e9bfda"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5ead46a9_b735b19d",
+        "filename": "src/lib.rs",
+        "patchSetId": 2
+      },
+      "lineNbr": 585,
+      "author": {
+        "id": 1000160
+      },
+      "writtenOn": "2024-12-19T12:42:51Z",
+      "side": 1,
+      "message": "Implementing `DerefMut` requires that `Deref` is already implemented, and `DerefMut` will use the already defined `Target` type",
+      "parentUuid": "041dea29_29f322dc",
+      "range": {
+        "startLine": 585,
+        "startChar": 8,
+        "endLine": 585,
+        "endChar": 37
+      },
+      "revId": "b462ec1b55b62b0e6713ee4a2a4f6c09f2821228",
+      "serverId": "8f6f209b-db1a-4cbf-aa44-c8bc30e9bfda"
     }
   ]
 }
