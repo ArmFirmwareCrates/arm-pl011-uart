@@ -46,6 +46,23 @@
       },
       "revId": "b462ec1b55b62b0e6713ee4a2a4f6c09f2821228",
       "serverId": "8f6f209b-db1a-4cbf-aa44-c8bc30e9bfda"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0c004e71_e96bc3ba",
+        "filename": "src/lib.rs",
+        "patchSetId": 2
+      },
+      "lineNbr": 592,
+      "author": {
+        "id": 1001390
+      },
+      "writtenOn": "2024-12-19T22:30:04Z",
+      "side": 1,
+      "message": "Idea, see if you like it: You could also assert that with\n\n```\nuse core::mem::{size_of, align_of};\nassert!(size_of::\u003cPL011Registers\u003e() \u003d\u003d size_of::\u003cFakePL011Registers\u003e());\nassert!(align_of::\u003cPL011Registers\u003e() \u003d\u003d align_of::\u003cFakePL011Registers\u003e());\n```\n\nSimilarly, up above, you could\n\n```\nassert!(align_of_val(\u0026regs_ptr) \u003d\u003d align_of::\u003cFakePL011Registers\u003e());\n```",
+      "revId": "b462ec1b55b62b0e6713ee4a2a4f6c09f2821228",
+      "serverId": "8f6f209b-db1a-4cbf-aa44-c8bc30e9bfda"
     }
   ]
 }
