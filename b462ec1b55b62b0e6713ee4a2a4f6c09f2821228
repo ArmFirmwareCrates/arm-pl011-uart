@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "041dea29_29f322dc",
+        "filename": "src/lib.rs",
+        "patchSetId": 2
+      },
+      "lineNbr": 585,
+      "author": {
+        "id": 1000043
+      },
+      "writtenOn": "2024-12-19T09:55:39Z",
+      "side": 1,
+      "message": "Side question: how come the `Deref` trait defines its `Target` type but the `DerefMut` trait does not?",
+      "range": {
+        "startLine": 585,
+        "startChar": 8,
+        "endLine": 585,
+        "endChar": 37
+      },
+      "revId": "b462ec1b55b62b0e6713ee4a2a4f6c09f2821228",
+      "serverId": "8f6f209b-db1a-4cbf-aa44-c8bc30e9bfda"
+    }
+  ]
+}
