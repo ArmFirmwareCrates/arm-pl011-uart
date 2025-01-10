@@ -581,7 +581,7 @@ mod tests {
         regs: &'a mut [u32; 1024],
     }
 
-    impl<'a> Deref for PL011RegsRef<'a> {
+    impl Deref for PL011RegsRef<'_> {
         type Target = PL011Registers;
 
         fn deref(&self) -> &Self::Target {
@@ -594,7 +594,7 @@ mod tests {
         }
     }
 
-    impl<'a> DerefMut for PL011RegsRef<'a> {
+    impl DerefMut for PL011RegsRef<'_> {
         fn deref_mut(&mut self) -> &mut Self::Target {
             let regs_ptr = self.regs.as_mut_ptr() as *mut Self::Target;
             assert!(regs_ptr.is_aligned());
@@ -874,13 +874,13 @@ mod tests {
         let mut regs = FakePL011Registers::new();
         {
             let uart = Uart::new(regs.get());
-            assert_eq!(false, uart.is_rx_fifo_empty());
+            assert!(!uart.is_rx_fifo_empty());
         }
 
         {
             regs.reg_write(0x018, 1 << 4);
             let uart = Uart::new(regs.get());
-            assert_eq!(true, uart.is_rx_fifo_empty());
+            assert!(uart.is_rx_fifo_empty());
         }
     }
 
@@ -889,13 +889,13 @@ mod tests {
         let mut regs = FakePL011Registers::new();
         {
             let uart = Uart::new(regs.get());
-            assert_eq!(false, uart.is_rx_fifo_full());
+            assert!(!uart.is_rx_fifo_full());
         }
 
         {
             regs.reg_write(0x018, 1 << 6);
             let uart = Uart::new(regs.get());
-            assert_eq!(true, uart.is_rx_fifo_full());
+            assert!(uart.is_rx_fifo_full());
         }
     }
 
@@ -904,13 +904,13 @@ mod tests {
         let mut regs = FakePL011Registers::new();
         {
             let uart = Uart::new(regs.get());
-            assert_eq!(false, uart.is_tx_fifo_empty());
+            assert!(!uart.is_tx_fifo_empty());
         }
 
         {
             regs.reg_write(0x018, 1 << 7);
             let uart = Uart::new(regs.get());
-            assert_eq!(true, uart.is_tx_fifo_empty());
+            assert!(uart.is_tx_fifo_empty());
         }
     }
 
@@ -919,13 +919,13 @@ mod tests {
         let mut regs = FakePL011Registers::new();
         {
             let uart = Uart::new(regs.get());
-            assert_eq!(false, uart.is_tx_fifo_full());
+            assert!(!uart.is_tx_fifo_full());
         }
 
         {
             regs.reg_write(0x018, 1 << 5);
             let uart = Uart::new(regs.get());
-            assert_eq!(true, uart.is_tx_fifo_full());
+            assert!(uart.is_tx_fifo_full());
         }
     }
 
@@ -934,13 +934,13 @@ mod tests {
         let mut regs = FakePL011Registers::new();
         {
             let uart = Uart::new(regs.get());
-            assert_eq!(false, uart.is_busy());
+            assert!(!uart.is_busy());
         }
 
         {
             regs.reg_write(0x018, 1 << 3);
             let uart = Uart::new(regs.get());
-            assert_eq!(true, uart.is_busy());
+            assert!(uart.is_busy());
         }
     }
 
@@ -1009,7 +1009,7 @@ mod tests {
         assert_eq!(0x41, identification.designer);
         assert_eq!(0x03, identification.revision_number);
         assert_eq!(0x00, identification.configuration);
-        assert_eq!(true, identification.is_valid());
+        assert!(identification.is_valid());
     }
 
     #[test]
