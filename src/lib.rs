@@ -13,10 +13,10 @@ use thiserror::Error;
 // Register descriptions
 
 bitflags! {
-    // Data Register
+    /// Data Register
     #[repr(transparent)]
     #[derive(Copy, Clone)]
-    struct DataRegister : u32 {
+    struct DataRegister: u32 {
         /// Overrun error
         const OE = 1 << 11;
         /// Break error
@@ -122,31 +122,53 @@ bitflags! {
 /// PL011 register map
 #[repr(C, align(4))]
 pub struct PL011Registers {
-    uartdr: u32,                    // 0x000 Data Register
-    uartrsr_ecr: u32,               // 0x004 Receive Status Register/Error Clear Register
+    /// Data Register
+    uartdr: u32,                    // 0x000
+    /// Receive Status Register/Error Clear Register
+    uartrsr_ecr: u32,               // 0x004
     reserved_08: [u32; 4],          // 0x008 - 0x014
-    uartfr: FlagsRegister,          // 0x018 Flag Register
+    /// Flag Register
+    uartfr: FlagsRegister,          // 0x018
     reserved_1c: u32,               // 0x01C
-    uartilpr: u32,                  // 0x020 IrDA Low-Power Counter Register
-    uartibrd: u32,                  // 0x024 Integer Baud Rate Register
-    uartfbrd: u32,                  // 0x028 Fractional Baud Rate Register
-    uartlcr_h: LineControlRegister, // 0x02C Line Control Register
-    uartcr: ControlRegister,        // 0x030 Control Register
-    uartifls: u32,                  // 0x034 Interrupt FIFO Level Select Register
-    uartimsc: u32,                  // 0x038 Interrupt Mask Set/Clear Register
-    uartris: u32,                   // 0x03C Raw Interrupt Status Register
-    uartmis: u32,                   // 0x040 Masked INterrupt Status Register
-    uarticr: u32,                   // 0x044 Interrupt Clear Register
-    uartdmacr: u32,                 // 0x048 DMA control Register
+    /// IrDA Low-Power Counter Register
+    uartilpr: u32,                  // 0x020
+    /// Integer Baud Rate Register
+    uartibrd: u32,                  // 0x024
+    /// Fractional Baud Rate Register
+    uartfbrd: u32,                  // 0x028
+    /// Line Control Register
+    uartlcr_h: LineControlRegister, // 0x02C
+    /// Control Register
+    uartcr: ControlRegister,        // 0x030
+    /// Interrupt FIFO Level Select Register
+    uartifls: u32,                  // 0x034
+    /// Interrupt Mask Set/Clear Register
+    uartimsc: u32,                  // 0x038
+    /// Raw Interrupt Status Register
+    uartris: u32,                   // 0x03C
+    /// Masked INterrupt Status Register
+    uartmis: u32,                   // 0x040
+    /// Interrupt Clear Register
+    uarticr: u32,                   // 0x044
+    /// DMA control Register
+    uartdmacr: u32,                 // 0x048
     reserved_4c: [u32; 997],        // 0x04C - 0xFDC
-    uartperiphid0: u32,             // 0xFE0 UARTPeriphID0 Register
-    uartperiphid1: u32,             // 0xFE4 UARTPeriphID1 Register
-    uartperiphid2: u32,             // 0xFE8 UARTPeriphID2 Register
-    uartperiphid3: u32,             // 0xFEC UARTPeriphID3 Register
-    uartpcellid0: u32,              // 0xFF0 UARTPCellID0 Register
-    uartpcellid1: u32,              // 0xFF4 UARTPCellID1 Register
-    uartpcellid2: u32,              // 0xFF8 UARTPCellID2 Register
-    uartpcellid3: u32,              // 0xFFC UARTPCellID3 Register
+    /// UARTPeriphID0 Register
+    uartperiphid0: u32,             // 0xFE0
+    /// UARTPeriphID1 Register
+    uartperiphid1: u32,             // 0xFE4
+    /// UARTPeriphID2 Register
+    uartperiphid2: u32,             // 0xFE8
+    /// UARTPeriphID3 Register
+    uartperiphid3: u32,             // 0xFEC
+    /// UARTPCellID0 Register
+    uartpcellid0: u32,              // 0xFF0
+    /// UARTPCellID1 Register
+    uartpcellid1: u32,              // 0xFF4
+    /// UARTPCellID2 Register
+    uartpcellid2: u32,              // 0xFF8
+    /// UARTPCellID3 Register
+    uartpcellid3: u32,              // 0xFFC
 }
 
 // Config
