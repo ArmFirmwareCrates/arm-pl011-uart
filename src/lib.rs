@@ -174,6 +174,7 @@ pub struct PL011Registers {
 // Config
 
 /// Data bit count
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum DataBits {
     Bits5,
     Bits6,
@@ -182,6 +183,7 @@ pub enum DataBits {
 }
 
 /// Parity
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Parity {
     None,
     Even,
@@ -191,6 +193,7 @@ pub enum Parity {
 }
 
 /// Stop bit count
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum StopBits {
     One,
     Two,
@@ -226,7 +229,7 @@ impl Identification {
 }
 
 /// PL011 UART error type
-#[derive(Debug, Error, PartialEq)]
+#[derive(Clone, Copy, Debug, Error, Eq, PartialEq)]
 pub enum Error {
     #[error("Invalid parameter")]
     InvalidParameter,
