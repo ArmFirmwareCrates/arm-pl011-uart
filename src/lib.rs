@@ -505,7 +505,11 @@ where
 
 impl embedded_io::Error for Error {
     fn kind(&self) -> embedded_io::ErrorKind {
-        embedded_io::ErrorKind::Other
+        match self {
+            Self::Break | Self::Overrun => embedded_io::ErrorKind::Other,
+            Self::Framing | Self::Parity => embedded_io::ErrorKind::InvalidData,
+            Self::InvalidParameter => embedded_io::ErrorKind::InvalidInput,
+        }
     }
 }
 
@@ -1065,7 +1069,7 @@ mod tests {
         );
 
         assert_eq!(
-            embedded_io::ErrorKind::Other,
+            embedded_io::ErrorKind::InvalidData,
             embedded_io::Error::kind(&Error::Framing)
         );
     }
