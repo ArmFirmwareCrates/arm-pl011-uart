@@ -340,57 +340,34 @@ where
 
     /// Check if receive FIFO is empty
     pub fn is_rx_fifo_empty(&self) -> bool {
-        // SAFETY: The caller of Uart::new promised that self.regs will return a valid PL011
-        // register block.
-        unsafe {
-            (&raw const (*self.regs.ptr()).uartfr)
-                .read_volatile()
-                .contains(FlagsRegister::RXFE)
-        }
+        self.flags().contains(FlagsRegister::RXFE)
     }
 
     /// Check if receive FIFO is full
     pub fn is_rx_fifo_full(&self) -> bool {
-        // SAFETY: The caller of Uart::new promised that self.regs will return a valid PL011
-        // register block.
-        unsafe {
-            (&raw const (*self.regs.ptr()).uartfr)
-                .read_volatile()
-                .contains(FlagsRegister::RXFF)
-        }
+        self.flags().contains(FlagsRegister::RXFF)
     }
 
     /// Check if transmit FIFO is empty
     pub fn is_tx_fifo_empty(&self) -> bool {
-        // SAFETY: The caller of Uart::new promised that self.regs will return a valid PL011
-        // register block.
-        unsafe {
-            (&raw const (*self.regs.ptr()).uartfr)
-                .read_volatile()
-                .contains(FlagsRegister::TXFE)
-        }
+        self.flags().contains(FlagsRegister::TXFE)
     }
 
     /// Check if transmit FIFO is full
     pub fn is_tx_fifo_full(&self) -> bool {
-        // SAFETY: The caller of Uart::new promised that self.regs will return a valid PL011
-        // register block.
-        unsafe {
-            (&raw const (*self.regs.ptr()).uartfr)
-                .read_volatile()
-                .contains(FlagsRegister::TXFF)
-        }
+        self.flags().contains(FlagsRegister::TXFF)
     }
 
     /// Check if UART is busy
     pub fn is_busy(&self) -> bool {
+        self.flags().contains(FlagsRegister::BUSY)
+    }
+
+    /// Reads and returns the flag register.
+    fn flags(&self) -> FlagsRegister {
         // SAFETY: The caller of Uart::new promised that self.regs will return a valid PL011
         // register block.
-        unsafe {
-            (&raw const (*self.regs.ptr()).uartfr)
-                .read_volatile()
-                .contains(FlagsRegister::BUSY)
-        }
+        unsafe { (&raw const (*self.regs.ptr()).uartfr).read_volatile() }
     }
 
     /// Non-blocking read of a single byte from the UART
