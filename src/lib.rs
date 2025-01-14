@@ -467,6 +467,14 @@ where
     }
 }
 
+// SAFETY: The caller of `Uart::new` promises that the UART's registers can be accessed from any
+// thread.
+unsafe impl<R: RegisterAccessor> Send for Uart<R> {}
+
+// SAFETY: An `&Uart<R>` only allows operations which read registers, which can safely be done from
+// multiple threads simultaneously.
+unsafe impl<R: RegisterAccessor> Sync for Uart<R> {}
+
 // embedded-nb implementation
 
 impl<R> serial::ErrorType for Uart<R> {
