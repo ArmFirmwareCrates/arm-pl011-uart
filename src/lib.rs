@@ -3,6 +3,8 @@
 
 #![no_std]
 #![doc = include_str!("../README.md")]
+#![deny(clippy::undocumented_unsafe_blocks)]
+#![deny(unsafe_op_in_unsafe_fn)]
 
 use bitflags::bitflags;
 use core::marker::PhantomData;
