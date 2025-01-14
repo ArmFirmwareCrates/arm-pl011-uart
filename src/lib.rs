@@ -401,8 +401,14 @@ impl<'a> Uart<'a> {
         unsafe { (&raw const (*self.regs.ptr()).uartfr).read_volatile() }
     }
 
-    /// Non-blocking read of a single byte from the UART
-    pub fn read_word(&mut self) -> Result<u8, Error> {
+    /// Non-blocking read of a single byte from the UART.
+    ///
+    /// Returns `Ok(None)` if no data is available to read.
+    pub fn read_word(&mut self) -> Result<Option<u8>, Error> {
+        if self.is_rx_fifo_empty() {
+            return Ok(None);
+        }
+
         // SAFETY: The caller of OwnedMmioPointer::new promised that it wraps a valid and unique
         // register block.
         let dr = unsafe { (&raw const (*self.regs.ptr()).uartdr).read_volatile() };
@@ -419,7 +425,7 @@ impl<'a> Uart<'a> {
             return Err(Error::Framing);
         }
 
-        Ok(dr as u8)
+        Ok(Some(dr as u8))
     }
 
     /// Non-blocking write of a single byte to the UART
@@ -525,12 +531,9 @@ impl serial::Write for Uart<'_> {
 
 impl serial::Read for Uart<'_> {
     fn read(&mut self) -> nb::Result<u8, Self::Error> {
-        if self.is_rx_fifo_empty() {
-            return Err(nb::Error::WouldBlock);
-        }
-
         match self.read_word() {
-            Ok(word) => Ok(word),
+            Ok(None) => Err(nb::Error::WouldBlock),
+            Ok(Some(word)) => Ok(word),
             Err(err) => Err(nb::Error::Other(err)),
         }
     }
@@ -589,12 +592,14 @@ impl embedded_io::Read for Uart<'_> {
             Ok(0)
         } else {
             // Wait until a byte is available to read.
-            while self.is_rx_fifo_empty() {}
-
-            // Read a single byte. No need to wait for more, the caller will retry until it has
-            // as many as it wants.
-            buf[0] = self.read_word()?;
-            Ok(1)
+            loop {
+                // Read a single byte. No need to wait for more, the caller will retry until it has
+                // as many as it wants.
+                if let Some(byte) = self.read_word()? {
+                    buf[0] = byte;
+                    return Ok(1);
+                }
+            }
         }
     }
 }
@@ -1024,7 +1029,14 @@ mod tests {
             regs.reg_write(0x000, 0x41);
 
             let mut uart = regs.uart_for_test();
-            assert_eq!(Ok(0x41), uart.read_word());
+            assert_eq!(Ok(Some(0x41)), uart.read_word());
+        }
+
+        {
+            regs.reg_write(0x018, 0x10);
+
+            let mut uart = regs.uart_for_test();
+            assert_eq!(Ok(None), uart.read_word());
         }
     }
 
