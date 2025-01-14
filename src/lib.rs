@@ -411,7 +411,7 @@ impl<'a> Uart<'a> {
     }
 
     /// Non-blocking read of a single byte from the UART
-    pub fn read_word(&self) -> Result<u8, Error> {
+    pub fn read_word(&mut self) -> Result<u8, Error> {
         // SAFETY: The caller of OwnedMmioPointer::new promised that it wraps a valid and unique
         // register block.
         let dr = unsafe { (&raw const (*self.regs.ptr()).uartdr).read_volatile() };
@@ -485,6 +485,14 @@ impl<'a> Uart<'a> {
         Ok((ibrd, fbrd))
     }
 }
+
+// SAFETY: The caller of `OwnedMmioPointer::new` promises that the MMIO registers can be accessed
+// from any thread.
+unsafe impl<T> Send for OwnedMmioPointer<'_, T> {}
+
+// SAFETY: An `&Uart` only allows operations which read registers, which can safely be done from
+// multiple threads simultaneously.
+unsafe impl Sync for Uart<'_> {}
 
 // embedded-nb implementation
 
@@ -994,35 +1002,35 @@ mod tests {
         {
             regs.reg_write(0x000, 1 << 11);
 
-            let uart = regs.uart_for_test();
+            let mut uart = regs.uart_for_test();
             assert_eq!(Err(Error::Overrun), uart.read_word());
         }
 
         {
             regs.reg_write(0x000, 1 << 10);
 
-            let uart = regs.uart_for_test();
+            let mut uart = regs.uart_for_test();
             assert_eq!(Err(Error::Break), uart.read_word());
         }
 
         {
             regs.reg_write(0x000, 1 << 9);
 
-            let uart = regs.uart_for_test();
+            let mut uart = regs.uart_for_test();
             assert_eq!(Err(Error::Parity), uart.read_word());
         }
 
         {
             regs.reg_write(0x000, 1 << 8);
 
-            let uart = regs.uart_for_test();
+            let mut uart = regs.uart_for_test();
             assert_eq!(Err(Error::Framing), uart.read_word());
         }
 
         {
             regs.reg_write(0x000, 0x41);
 
-            let uart = regs.uart_for_test();
+            let mut uart = regs.uart_for_test();
             assert_eq!(Ok(0x41), uart.read_word());
         }
     }
