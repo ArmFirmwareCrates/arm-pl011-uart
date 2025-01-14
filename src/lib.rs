@@ -501,27 +501,36 @@ where
     R: DerefMut<Target = PL011Registers>,
 {
     fn write(&mut self, buf: &[u8]) -> Result<usize, Self::Error> {
-        for word in buf {
-            loop {
-                match serial::Write::write(self, *word) {
-                    Err(nb::Error::Other(err)) => return Err(err),
-                    Err(nb::Error::WouldBlock) => continue,
-                    Ok(()) => break,
+        let mut bytes_written = 0;
+        if !buf.is_empty() {
+            // Wait until there is room in the TX buffer.
+            while self.is_tx_fifo_full() {}
+
+            // Write until the TX buffer is full or we run out of bytes to write. The caller will
+            // take care of retrying until the full buffer is written.
+            for byte in buf {
+                self.write_word(*byte);
+                bytes_written += 1;
+                if self.is_tx_fifo_full() {
+                    break;
                 }
             }
         }
-
-        Ok(buf.len())
+        Ok(bytes_written)
     }
 
     fn flush(&mut self) -> Result<(), Self::Error> {
-        loop {
-            match serial::Write::flush(self) {
-                Ok(_) => return Ok(()),
-                Err(nb::Error::Other(err)) => return Err(err),
-                _ => continue,
-            }
-        }
+        while self.is_busy() {}
+        Ok(())
+    }
+}
+
+impl<R> embedded_io::WriteReady for Uart<R>
+where
+    R: DerefMut<Target = PL011Registers>,
+{
+    fn write_ready(&mut self) -> Result<bool, Self::Error> {
+        Ok(!self.is_tx_fifo_full())
     }
 }
 
@@ -530,20 +539,26 @@ where
     R: DerefMut<Target = PL011Registers>,
 {
     fn read(&mut self, buf: &mut [u8]) -> Result<usize, Self::Error> {
-        let mut index = 0;
+        if buf.is_empty() {
+            Ok(0)
+        } else {
+            // Wait until a byte is available to read.
+            while self.is_rx_fifo_empty() {}
 
-        while index != buf.len() {
-            match serial::Read::read(self) {
-                Ok(byte) => {
-                    buf[index] = byte;
-                    index += 1;
-                }
-                Err(nb::Error::Other(err)) => return Err(err),
-                Err(nb::Error::WouldBlock) => continue,
-            }
+            // Read a single byte. No need to wait for more, the caller will retry until it has
+            // as many as it wants.
+            buf[0] = self.read_word()?;
+            Ok(1)
         }
+    }
+}
 
-        Ok(buf.len())
+impl<R> embedded_io::ReadReady for Uart<R>
+where
+    R: DerefMut<Target = PL011Registers>,
+{
+    fn read_ready(&mut self) -> Result<bool, Self::Error> {
+        Ok(!self.is_rx_fifo_empty())
     }
 }
 
@@ -554,8 +569,7 @@ where
     R: DerefMut<Target = PL011Registers>,
 {
     fn write_str(&mut self, s: &str) -> core::fmt::Result {
-        embedded_io::Write::write(self, s.as_bytes()).map_err(|_| core::fmt::Error)?;
-        Ok(())
+        Ok(embedded_io::Write::write_all(self, s.as_bytes()).map_err(|_| core::fmt::Error)?)
     }
 }
 
@@ -563,6 +577,7 @@ where
 mod tests {
     use super::*;
     use core::ops::Deref;
+    use embedded_io::{ReadReady, WriteReady};
 
     struct FakePL011Registers {
         regs: [u32; 1024],
@@ -1136,19 +1151,69 @@ mod tests {
     }
 
     #[test]
-    fn embeddeio_write() {
+    fn embeddedio_write_empty() {
         let mut regs = FakePL011Registers::new();
         let mut uart = Uart::new(regs.get());
-        assert_eq!(Ok(2), embedded_io::Write::write(&mut uart, &[1, 2]));
+        assert_eq!(Ok(0), embedded_io::Write::write(&mut uart, &[]));
         assert_eq!(Ok(()), embedded_io::Write::flush(&mut uart));
     }
 
     #[test]
-    fn embeddeio_read() {
+    fn embeddedio_write() {
+        let mut regs = FakePL011Registers::new();
+        let mut uart = Uart::new(regs.get());
+        assert_eq!(Ok(2), embedded_io::Write::write(&mut uart, &[1, 2]));
+        assert_eq!(Ok(()), embedded_io::Write::write_all(&mut uart, &[1, 2]));
+        assert_eq!(Ok(()), embedded_io::Write::flush(&mut uart));
+    }
+
+    #[test]
+    fn embeddedio_write_fifo_full() {
+        let mut regs = FakePL011Registers::new();
+        {
+            let mut uart = Uart::new(regs.get());
+            assert_eq!(Ok(true), uart.write_ready());
+        }
+
+        {
+            regs.reg_write(0x018, 1 << 5);
+            let mut uart = Uart::new(regs.get());
+            assert_eq!(Ok(false), uart.write_ready());
+        }
+    }
+
+    #[test]
+    fn embeddedio_read_empty() {
+        let mut regs = FakePL011Registers::new();
+        let mut uart = Uart::new(regs.get());
+        let mut data = [];
+        assert_eq!(Ok(0), embedded_io::Read::read(&mut uart, &mut data));
+    }
+
+    #[test]
+    fn embeddedio_read() {
         let mut regs = FakePL011Registers::new();
         let mut uart = Uart::new(regs.get());
         let mut data = [0u8; 2];
-        assert_eq!(Ok(2), embedded_io::Read::read(&mut uart, &mut data));
+        assert_eq!(Ok(1), embedded_io::Read::read(&mut uart, &mut data));
+        assert_eq!(data, [0, 0]);
+        assert_eq!(Ok(()), embedded_io::Read::read_exact(&mut uart, &mut data));
+        assert_eq!(data, [0, 0]);
+    }
+
+    #[test]
+    fn embeddedio_read_fifo_empty() {
+        let mut regs = FakePL011Registers::new();
+        {
+            let mut uart = Uart::new(regs.get());
+            assert_eq!(Ok(true), uart.read_ready());
+        }
+
+        {
+            regs.reg_write(0x018, 1 << 4);
+            let mut uart = Uart::new(regs.get());
+            assert_eq!(Ok(false), uart.read_ready());
+        }
     }
 
     #[test]
