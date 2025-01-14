@@ -5,7 +5,6 @@
 #![doc = include_str!("../README.md")]
 
 use bitflags::bitflags;
-use core::ops::DerefMut;
 use embedded_hal_nb::nb;
 use embedded_hal_nb::serial;
 use thiserror::Error;
@@ -246,20 +245,43 @@ pub enum Error {
     Framing,
 }
 
+/// Trait to provide access to the registers of a PL011 UART.
+pub trait RegisterAccessor {
+    fn ptr(&self) -> *const PL011Registers;
+    fn ptr_mut(&mut self) -> *mut PL011Registers;
+}
+
+impl RegisterAccessor for *mut PL011Registers {
+    fn ptr(&self) -> *const PL011Registers {
+        *self
+    }
+
+    fn ptr_mut(&mut self) -> *mut PL011Registers {
+        *self
+    }
+}
+
 /// PL011 UART implementation
-pub struct Uart<R>
-where
-    R: DerefMut<Target = PL011Registers>,
-{
+pub struct Uart<R> {
     regs: R,
 }
 
 impl<R> Uart<R>
 where
-    R: DerefMut<Target = PL011Registers>,
+    R: RegisterAccessor,
 {
     /// Create new UART instance
-    pub fn new(regs: R) -> Self {
+    ///
+    /// # Safety
+    ///
+    /// The instance of `R` passed must always return pointers to the registers of a PL011 UART
+    /// which are properly aligned, mapped and valid to read and write from any thread with volatile
+    /// operations. They must not have any other aliases which are used to access them while the methods of this
+    /// `Uart` are called.
+    ///
+    /// In the case that `R` is a `*mut PL011Registers` this means that it must be valid and unique,
+    /// and remain so for the lifetime of the `Uart`.
+    pub unsafe fn new(regs: R) -> Self {
         Self { regs }
     }
 
@@ -287,16 +309,17 @@ where
             StopBits::Two => LineControlRegister::STP2,
         } | LineControlRegister::FEN;
 
-        // SAFETY: self.regs can be dereferenced as a valid PL011 register block
+        // SAFETY: The caller of Uart::new promised that self.regs will return a valid PL011
+        // register block.
         unsafe {
-            (&raw mut self.regs.uartrsr_ecr).write_volatile(0);
-            (&raw mut self.regs.uartcr).write_volatile(ControlRegister::empty());
+            (&raw mut (*self.regs.ptr_mut()).uartrsr_ecr).write_volatile(0);
+            (&raw mut (*self.regs.ptr_mut()).uartcr).write_volatile(ControlRegister::empty());
 
-            (&raw mut self.regs.uartibrd).write_volatile(uartibrd);
-            (&raw mut self.regs.uartfbrd).write_volatile(uartfbrd);
-            (&raw mut self.regs.uartlcr_h).write_volatile(line_control);
+            (&raw mut (*self.regs.ptr_mut()).uartibrd).write_volatile(uartibrd);
+            (&raw mut (*self.regs.ptr_mut()).uartfbrd).write_volatile(uartfbrd);
+            (&raw mut (*self.regs.ptr_mut()).uartlcr_h).write_volatile(line_control);
 
-            (&raw mut self.regs.uartcr).write_volatile(
+            (&raw mut (*self.regs.ptr_mut()).uartcr).write_volatile(
                 ControlRegister::RXE | ControlRegister::TXE | ControlRegister::UARTEN,
             );
         }
@@ -306,17 +329,19 @@ where
 
     /// Disable UART
     pub fn disable(&mut self) {
-        // SAFETY: self.regs can be dereferenced as a valid PL011 register block
+        // SAFETY: The caller of Uart::new promised that self.regs will return a valid PL011
+        // register block.
         unsafe {
-            (&raw mut self.regs.uartcr).write_volatile(ControlRegister::empty());
+            (&raw mut (*self.regs.ptr_mut()).uartcr).write_volatile(ControlRegister::empty());
         }
     }
 
     /// Check if receive FIFO is empty
     pub fn is_rx_fifo_empty(&self) -> bool {
-        // SAFETY: self.regs can be dereferenced as a valid PL011 register block
+        // SAFETY: The caller of Uart::new promised that self.regs will return a valid PL011
+        // register block.
         unsafe {
-            (&raw const self.regs.uartfr)
+            (&raw const (*self.regs.ptr()).uartfr)
                 .read_volatile()
                 .contains(FlagsRegister::RXFE)
         }
@@ -324,9 +349,10 @@ where
 
     /// Check if receive FIFO is full
     pub fn is_rx_fifo_full(&self) -> bool {
-        // SAFETY: self.regs can be dereferenced as a valid PL011 register block
+        // SAFETY: The caller of Uart::new promised that self.regs will return a valid PL011
+        // register block.
         unsafe {
-            (&raw const self.regs.uartfr)
+            (&raw const (*self.regs.ptr()).uartfr)
                 .read_volatile()
                 .contains(FlagsRegister::RXFF)
         }
@@ -334,9 +360,10 @@ where
 
     /// Check if transmit FIFO is empty
     pub fn is_tx_fifo_empty(&self) -> bool {
-        // SAFETY: self.regs can be dereferenced as a valid PL011 register block
+        // SAFETY: The caller of Uart::new promised that self.regs will return a valid PL011
+        // register block.
         unsafe {
-            (&raw const self.regs.uartfr)
+            (&raw const (*self.regs.ptr()).uartfr)
                 .read_volatile()
                 .contains(FlagsRegister::TXFE)
         }
@@ -344,9 +371,10 @@ where
 
     /// Check if transmit FIFO is full
     pub fn is_tx_fifo_full(&self) -> bool {
-        // SAFETY: self.regs can be dereferenced as a valid PL011 register block
+        // SAFETY: The caller of Uart::new promised that self.regs will return a valid PL011
+        // register block.
         unsafe {
-            (&raw const self.regs.uartfr)
+            (&raw const (*self.regs.ptr()).uartfr)
                 .read_volatile()
                 .contains(FlagsRegister::TXFF)
         }
@@ -354,9 +382,10 @@ where
 
     /// Check if UART is busy
     pub fn is_busy(&self) -> bool {
-        // SAFETY: self.regs can be dereferenced as a valid PL011 register block
+        // SAFETY: The caller of Uart::new promised that self.regs will return a valid PL011
+        // register block.
         unsafe {
-            (&raw const self.regs.uartfr)
+            (&raw const (*self.regs.ptr()).uartfr)
                 .read_volatile()
                 .contains(FlagsRegister::BUSY)
         }
@@ -364,8 +393,9 @@ where
 
     /// Non-blocking read of a single byte from the UART
     pub fn read_word(&self) -> Result<u8, Error> {
-        // SAFETY: self.regs can be dereferenced as a valid PL011 register block
-        let dr = unsafe { (&raw const self.regs.uartdr).read_volatile() };
+        // SAFETY: The caller of Uart::new promised that self.regs will return a valid PL011
+        // register block.
+        let dr = unsafe { (&raw const (*self.regs.ptr()).uartdr).read_volatile() };
 
         let flags = DataRegister::from_bits_truncate(dr);
 
@@ -384,21 +414,23 @@ where
 
     /// Non-blocking write of a single byte to the UART
     pub fn write_word(&mut self, word: u8) {
-        // SAFETY: self.regs can be dereferenced as a valid PL011 register block
+        // SAFETY: The caller of Uart::new promised that self.regs will return a valid PL011
+        // register block.
         unsafe {
-            (&raw mut self.regs.uartdr).write_volatile(word as u32);
+            (&raw mut (*self.regs.ptr_mut()).uartdr).write_volatile(word as u32);
         }
     }
 
     /// Read UART peripheral identification structure
     pub fn read_identification(&self) -> Identification {
-        // SAFETY: self.regs can be dereferenced as a valid PL011 register block
+        // SAFETY: The caller of Uart::new promised that self.regs will return a valid PL011
+        // register block.
         let id: [u32; 4] = unsafe {
             [
-                (&raw const self.regs.uartperiphid0).read_volatile(),
-                (&raw const self.regs.uartperiphid1).read_volatile(),
-                (&raw const self.regs.uartperiphid2).read_volatile(),
-                (&raw const self.regs.uartperiphid3).read_volatile(),
+                (&raw const (*self.regs.ptr()).uartperiphid0).read_volatile(),
+                (&raw const (*self.regs.ptr()).uartperiphid1).read_volatile(),
+                (&raw const (*self.regs.ptr()).uartperiphid2).read_volatile(),
+                (&raw const (*self.regs.ptr()).uartperiphid3).read_volatile(),
             ]
         };
 
@@ -437,10 +469,7 @@ where
 
 // embedded-nb implementation
 
-impl<R> serial::ErrorType for Uart<R>
-where
-    R: DerefMut<Target = PL011Registers>,
-{
+impl<R> serial::ErrorType for Uart<R> {
     type Error = Error;
 }
 
@@ -458,7 +487,7 @@ impl serial::Error for Error {
 
 impl<R> serial::Write for Uart<R>
 where
-    R: DerefMut<Target = PL011Registers>,
+    R: RegisterAccessor,
 {
     fn write(&mut self, word: u8) -> nb::Result<(), Self::Error> {
         if self.is_tx_fifo_full() {
@@ -481,7 +510,7 @@ where
 
 impl<R> serial::Read for Uart<R>
 where
-    R: DerefMut<Target = PL011Registers>,
+    R: RegisterAccessor,
 {
     fn read(&mut self) -> nb::Result<u8, Self::Error> {
         if self.is_rx_fifo_empty() {
@@ -496,10 +525,7 @@ where
 }
 
 // embedded-io implementation
-impl<R> embedded_io::ErrorType for Uart<R>
-where
-    R: DerefMut<Target = PL011Registers>,
-{
+impl<R> embedded_io::ErrorType for Uart<R> {
     type Error = Error;
 }
 
@@ -515,7 +541,7 @@ impl embedded_io::Error for Error {
 
 impl<R> embedded_io::Write for Uart<R>
 where
-    R: DerefMut<Target = PL011Registers>,
+    R: RegisterAccessor,
 {
     fn write(&mut self, buf: &[u8]) -> Result<usize, Self::Error> {
         for word in buf {
@@ -544,7 +570,7 @@ where
 
 impl<R> embedded_io::Read for Uart<R>
 where
-    R: DerefMut<Target = PL011Registers>,
+    R: RegisterAccessor,
 {
     fn read(&mut self, buf: &mut [u8]) -> Result<usize, Self::Error> {
         let mut index = 0;
@@ -568,7 +594,7 @@ where
 
 impl<R> core::fmt::Write for Uart<R>
 where
-    R: DerefMut<Target = PL011Registers>,
+    R: RegisterAccessor,
 {
     fn write_str(&mut self, s: &str) -> core::fmt::Result {
         embedded_io::Write::write(self, s.as_bytes()).map_err(|_| core::fmt::Error)?;
@@ -579,7 +605,6 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use core::ops::Deref;
 
     struct FakePL011Registers {
         regs: [u32; 1024],
@@ -613,28 +638,30 @@ mod tests {
         regs: &'a mut [u32; 1024],
     }
 
-    impl Deref for PL011RegsRef<'_> {
-        type Target = PL011Registers;
-
-        fn deref(&self) -> &Self::Target {
-            let regs_ptr = self.regs.as_ptr() as *const Self::Target;
+    impl RegisterAccessor for PL011RegsRef<'_> {
+        fn ptr(&self) -> *const PL011Registers {
+            let regs_ptr = self.regs.as_ptr().cast::<PL011Registers>();
             assert!(regs_ptr.is_aligned());
 
-            // SAFETY: regs_ptr points to a FakePL011Registers struct's regs field, that has the
-            // same size and alignment as PL011Registers
-            unsafe { &*regs_ptr }
+            // regs_ptr points to a FakePL011Registers struct's regs field, that has the same size
+            // and alignment as PL011Registers
+            regs_ptr
+        }
+
+        fn ptr_mut(&mut self) -> *mut PL011Registers {
+            let regs_ptr = self.regs.as_mut_ptr().cast::<PL011Registers>();
+            assert!(regs_ptr.is_aligned());
+
+            // regs_ptr points to a FakePL011Registers struct's regs field, that has the same size
+            // and alignment as PL011Registers
+            regs_ptr
         }
     }
 
-    impl DerefMut for PL011RegsRef<'_> {
-        fn deref_mut(&mut self) -> &mut Self::Target {
-            let regs_ptr = self.regs.as_mut_ptr() as *mut Self::Target;
-            assert!(regs_ptr.is_aligned());
-
-            // SAFETY: regs_ptr points to a FakePL011Registers struct's regs field, that has the
-            // same size and alignment as PL011Registers
-            unsafe { &mut *regs_ptr }
-        }
+    fn uart_for_test(regs: &mut FakePL011Registers) -> Uart<PL011RegsRef> {
+        // SAFETY: PL011RegsRef always returns valid pointers because they come from a reference
+        // tied to its lifetime.
+        unsafe { Uart::new(regs.get()) }
     }
 
     #[test]
@@ -645,7 +672,7 @@ mod tests {
     #[test]
     fn enable_230400_8n1() {
         let mut regs = FakePL011Registers::new();
-        let mut uart = Uart::new(regs.get());
+        let mut uart = uart_for_test(&mut regs);
         let config = LineConfig {
             data_bits: DataBits::Bits8,
             parity: Parity::None,
@@ -668,7 +695,7 @@ mod tests {
         let mut regs = FakePL011Registers::new();
 
         {
-            let mut uart = Uart::new(regs.get());
+            let mut uart = uart_for_test(&mut regs);
             let config = LineConfig {
                 data_bits: DataBits::Bits8,
                 parity: Parity::None,
@@ -683,7 +710,7 @@ mod tests {
         regs.clear();
 
         {
-            let mut uart = Uart::new(regs.get());
+            let mut uart = uart_for_test(&mut regs);
             let config = LineConfig {
                 data_bits: DataBits::Bits8,
                 parity: Parity::None,
@@ -698,7 +725,7 @@ mod tests {
         regs.clear();
 
         {
-            let mut uart = Uart::new(regs.get());
+            let mut uart = uart_for_test(&mut regs);
             let config = LineConfig {
                 data_bits: DataBits::Bits8,
                 parity: Parity::None,
@@ -713,7 +740,7 @@ mod tests {
         regs.clear();
 
         {
-            let mut uart = Uart::new(regs.get());
+            let mut uart = uart_for_test(&mut regs);
             let config = LineConfig {
                 data_bits: DataBits::Bits8,
                 parity: Parity::None,
@@ -728,7 +755,7 @@ mod tests {
         regs.clear();
 
         {
-            let mut uart = Uart::new(regs.get());
+            let mut uart = uart_for_test(&mut regs);
             let config = LineConfig {
                 data_bits: DataBits::Bits8,
                 parity: Parity::None,
@@ -743,7 +770,7 @@ mod tests {
         regs.clear();
 
         {
-            let mut uart = Uart::new(regs.get());
+            let mut uart = uart_for_test(&mut regs);
             let config = LineConfig {
                 data_bits: DataBits::Bits8,
                 parity: Parity::None,
@@ -758,7 +785,7 @@ mod tests {
         regs.clear();
 
         {
-            let mut uart = Uart::new(regs.get());
+            let mut uart = uart_for_test(&mut regs);
             let config = LineConfig {
                 data_bits: DataBits::Bits8,
                 parity: Parity::None,
@@ -774,7 +801,7 @@ mod tests {
     #[test]
     fn enable_invalid_baudrates() {
         let mut regs = FakePL011Registers::new();
-        let mut uart = Uart::new(regs.get());
+        let mut uart = uart_for_test(&mut regs);
 
         {
             let config = LineConfig {
@@ -828,7 +855,7 @@ mod tests {
         let mut regs = FakePL011Registers::new();
         {
             // 8 bits, even parity, 2 stop bits
-            let mut uart = Uart::new(regs.get());
+            let mut uart = uart_for_test(&mut regs);
             let config = LineConfig {
                 data_bits: DataBits::Bits7,
                 parity: Parity::Even,
@@ -844,7 +871,7 @@ mod tests {
         {
             // 6 bits, odd parity, 1 stop bit
             let mut regs = FakePL011Registers::new();
-            let mut uart = Uart::new(regs.get());
+            let mut uart = uart_for_test(&mut regs);
             let config = LineConfig {
                 data_bits: DataBits::Bits6,
                 parity: Parity::Odd,
@@ -860,7 +887,7 @@ mod tests {
         {
             // 5 bits, one parity, 1 stop bit
             let mut regs = FakePL011Registers::new();
-            let mut uart = Uart::new(regs.get());
+            let mut uart = uart_for_test(&mut regs);
             let config = LineConfig {
                 data_bits: DataBits::Bits5,
                 parity: Parity::One,
@@ -874,7 +901,7 @@ mod tests {
         {
             // 5 bits, zero paraty, 2 stop bit
             let mut regs = FakePL011Registers::new();
-            let mut uart = Uart::new(regs.get());
+            let mut uart = uart_for_test(&mut regs);
             let config = LineConfig {
                 data_bits: DataBits::Bits5,
                 parity: Parity::Zero,
@@ -889,7 +916,7 @@ mod tests {
     #[test]
     fn disable() {
         let mut regs = FakePL011Registers::new();
-        let mut uart = Uart::new(regs.get());
+        let mut uart = uart_for_test(&mut regs);
         let config = LineConfig {
             data_bits: DataBits::Bits8,
             parity: Parity::None,
@@ -905,13 +932,13 @@ mod tests {
     fn rx_fifo_empty() {
         let mut regs = FakePL011Registers::new();
         {
-            let uart = Uart::new(regs.get());
+            let uart = uart_for_test(&mut regs);
             assert!(!uart.is_rx_fifo_empty());
         }
 
         {
             regs.reg_write(0x018, 1 << 4);
-            let uart = Uart::new(regs.get());
+            let uart = uart_for_test(&mut regs);
             assert!(uart.is_rx_fifo_empty());
         }
     }
@@ -920,13 +947,13 @@ mod tests {
     fn rx_fifo_full() {
         let mut regs = FakePL011Registers::new();
         {
-            let uart = Uart::new(regs.get());
+            let uart = uart_for_test(&mut regs);
             assert!(!uart.is_rx_fifo_full());
         }
 
         {
             regs.reg_write(0x018, 1 << 6);
-            let uart = Uart::new(regs.get());
+            let uart = uart_for_test(&mut regs);
             assert!(uart.is_rx_fifo_full());
         }
     }
@@ -935,13 +962,13 @@ mod tests {
     fn tx_fifo_empty() {
         let mut regs = FakePL011Registers::new();
         {
-            let uart = Uart::new(regs.get());
+            let uart = uart_for_test(&mut regs);
             assert!(!uart.is_tx_fifo_empty());
         }
 
         {
             regs.reg_write(0x018, 1 << 7);
-            let uart = Uart::new(regs.get());
+            let uart = uart_for_test(&mut regs);
             assert!(uart.is_tx_fifo_empty());
         }
     }
@@ -950,13 +977,13 @@ mod tests {
     fn tx_fifo_full() {
         let mut regs = FakePL011Registers::new();
         {
-            let uart = Uart::new(regs.get());
+            let uart = uart_for_test(&mut regs);
             assert!(!uart.is_tx_fifo_full());
         }
 
         {
             regs.reg_write(0x018, 1 << 5);
-            let uart = Uart::new(regs.get());
+            let uart = uart_for_test(&mut regs);
             assert!(uart.is_tx_fifo_full());
         }
     }
@@ -965,13 +992,13 @@ mod tests {
     fn busy() {
         let mut regs = FakePL011Registers::new();
         {
-            let uart = Uart::new(regs.get());
+            let uart = uart_for_test(&mut regs);
             assert!(!uart.is_busy());
         }
 
         {
             regs.reg_write(0x018, 1 << 3);
-            let uart = Uart::new(regs.get());
+            let uart = uart_for_test(&mut regs);
             assert!(uart.is_busy());
         }
     }
@@ -983,35 +1010,35 @@ mod tests {
         {
             regs.reg_write(0x000, 1 << 11);
 
-            let uart = Uart::new(regs.get());
+            let uart = uart_for_test(&mut regs);
             assert_eq!(Err(Error::Overrun), uart.read_word());
         }
 
         {
             regs.reg_write(0x000, 1 << 10);
 
-            let uart = Uart::new(regs.get());
+            let uart = uart_for_test(&mut regs);
             assert_eq!(Err(Error::Break), uart.read_word());
         }
 
         {
             regs.reg_write(0x000, 1 << 9);
 
-            let uart = Uart::new(regs.get());
+            let uart = uart_for_test(&mut regs);
             assert_eq!(Err(Error::Parity), uart.read_word());
         }
 
         {
             regs.reg_write(0x000, 1 << 8);
 
-            let uart = Uart::new(regs.get());
+            let uart = uart_for_test(&mut regs);
             assert_eq!(Err(Error::Framing), uart.read_word());
         }
 
         {
             regs.reg_write(0x000, 0x41);
 
-            let uart = Uart::new(regs.get());
+            let uart = uart_for_test(&mut regs);
             assert_eq!(Ok(0x41), uart.read_word());
         }
     }
@@ -1020,7 +1047,7 @@ mod tests {
     fn write_word() {
         let mut regs = FakePL011Registers::new();
 
-        let mut uart = Uart::new(regs.get());
+        let mut uart = uart_for_test(&mut regs);
         uart.write_word(0x41);
 
         assert_eq!(0x41, regs.reg_read(0x000));
@@ -1035,7 +1062,7 @@ mod tests {
         regs.reg_write(0xfe8, 0x34);
         regs.reg_write(0xfec, 0x00);
 
-        let uart = Uart::new(regs.get());
+        let uart = uart_for_test(&mut regs);
         let identification = uart.read_identification();
         assert_eq!(0x0011, identification.part_number);
         assert_eq!(0x41, identification.designer);
@@ -1079,7 +1106,7 @@ mod tests {
         let mut regs = FakePL011Registers::new();
 
         {
-            let mut uart = Uart::new(regs.get());
+            let mut uart = uart_for_test(&mut regs);
             assert_eq!(Ok(()), serial::Write::write(&mut uart, 0x41));
             assert_eq!(0x41, regs.reg_read(0x000));
         }
@@ -1088,7 +1115,7 @@ mod tests {
 
         {
             regs.reg_write(0x018, 1 << 5);
-            let mut uart = Uart::new(regs.get());
+            let mut uart = uart_for_test(&mut regs);
             assert_eq!(
                 Err(nb::Error::WouldBlock),
                 serial::Write::write(&mut uart, 0x41)
@@ -1098,14 +1125,14 @@ mod tests {
         regs.clear();
 
         {
-            let mut uart = Uart::new(regs.get());
+            let mut uart = uart_for_test(&mut regs);
             assert_eq!(Ok(()), serial::Write::flush(&mut uart));
         }
         regs.clear();
 
         {
             regs.reg_write(0x018, 1 << 3);
-            let mut uart = Uart::new(regs.get());
+            let mut uart = uart_for_test(&mut regs);
             assert_eq!(Err(nb::Error::WouldBlock), serial::Write::flush(&mut uart));
         }
     }
@@ -1117,7 +1144,7 @@ mod tests {
         {
             regs.reg_write(0x000, 0x41);
 
-            let mut uart = Uart::new(regs.get());
+            let mut uart = uart_for_test(&mut regs);
             assert_eq!(Ok(0x41), serial::Read::read(&mut uart));
         }
 
@@ -1126,7 +1153,7 @@ mod tests {
         {
             regs.reg_write(0x000, 0x41);
 
-            let mut uart = Uart::new(regs.get());
+            let mut uart = uart_for_test(&mut regs);
             assert_eq!(Ok(0x41), serial::Read::read(&mut uart));
         }
 
@@ -1135,7 +1162,7 @@ mod tests {
         {
             regs.reg_write(0x000, 1 << 11);
 
-            let mut uart = Uart::new(regs.get());
+            let mut uart = uart_for_test(&mut regs);
             assert_eq!(
                 Err(nb::Error::Other(Error::Overrun)),
                 serial::Read::read(&mut uart)
@@ -1147,7 +1174,7 @@ mod tests {
         {
             regs.reg_write(0x018, 1 << 4);
 
-            let mut uart = Uart::new(regs.get());
+            let mut uart = uart_for_test(&mut regs);
             assert_eq!(Err(nb::Error::WouldBlock), serial::Read::read(&mut uart));
         }
     }
@@ -1155,7 +1182,7 @@ mod tests {
     #[test]
     fn embeddeio_write() {
         let mut regs = FakePL011Registers::new();
-        let mut uart = Uart::new(regs.get());
+        let mut uart = uart_for_test(&mut regs);
         assert_eq!(Ok(2), embedded_io::Write::write(&mut uart, &[1, 2]));
         assert_eq!(Ok(()), embedded_io::Write::flush(&mut uart));
     }
@@ -1163,7 +1190,7 @@ mod tests {
     #[test]
     fn embeddeio_read() {
         let mut regs = FakePL011Registers::new();
-        let mut uart = Uart::new(regs.get());
+        let mut uart = uart_for_test(&mut regs);
         let mut data = [0u8; 2];
         assert_eq!(Ok(2), embedded_io::Read::read(&mut uart, &mut data));
     }
@@ -1171,7 +1198,7 @@ mod tests {
     #[test]
     fn core_write() {
         let mut regs = FakePL011Registers::new();
-        let mut uart = Uart::new(regs.get());
+        let mut uart = uart_for_test(&mut regs);
         assert_eq!(Ok(()), core::fmt::Write::write_str(&mut uart, "hello"));
     }
 }
