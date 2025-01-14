@@ -486,6 +486,14 @@ impl<'a> Uart<'a> {
     }
 }
 
+// SAFETY: The caller of `OwnedMmioPointer::new` promises that the MMIO registers can be accessed
+// from any thread.
+unsafe impl<T> Send for OwnedMmioPointer<'_, T> {}
+
+// SAFETY: An `&Uart` only allows operations which read registers, which can safely be done from
+// multiple threads simultaneously.
+unsafe impl Sync for Uart<'_> {}
+
 // embedded-nb implementation
 
 impl serial::ErrorType for Uart<'_> {
