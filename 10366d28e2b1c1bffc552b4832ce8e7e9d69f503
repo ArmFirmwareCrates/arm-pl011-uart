@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0f97392d_eebe8896",
+        "filename": "src/lib.rs",
+        "patchSetId": 2
+      },
+      "lineNbr": 249,
+      "author": {
+        "id": 1000160
+      },
+      "writtenOn": "2025-01-23T13:58:08Z",
+      "side": 1,
+      "message": "As discussed offline, this will be merged now as-is and later refactored to use a generic version of the trait.",
+      "revId": "10366d28e2b1c1bffc552b4832ce8e7e9d69f503",
+      "serverId": "8f6f209b-db1a-4cbf-aa44-c8bc30e9bfda"
+    }
+  ]
+}
