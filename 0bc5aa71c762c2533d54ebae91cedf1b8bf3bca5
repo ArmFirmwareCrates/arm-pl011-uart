@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e72f3695_3330571b",
+        "filename": "src/lib.rs",
+        "patchSetId": 2
+      },
+      "lineNbr": 395,
+      "author": {
+        "id": 1000309
+      },
+      "writtenOn": "2025-01-23T10:10:50Z",
+      "side": 1,
+      "message": "This should take `\u0026mut self` because it changes the state of the UART.",
+      "range": {
+        "startLine": 395,
+        "startChar": 22,
+        "endLine": 395,
+        "endChar": 26
+      },
+      "revId": "0bc5aa71c762c2533d54ebae91cedf1b8bf3bca5",
+      "serverId": "8f6f209b-db1a-4cbf-aa44-c8bc30e9bfda"
+    }
+  ]
+}
