@@ -12,14 +12,37 @@ use core::ptr::NonNull;
 use embedded_hal_nb::nb;
 use embedded_hal_nb::serial;
 use thiserror::Error;
+use zerocopy::{FromBytes, Immutable, IntoBytes, KnownLayout};
 
 // Register descriptions
 
+/// Data Register
+#[repr(transparent)]
+#[derive(Copy, Clone, Debug, Eq, FromBytes, Immutable, IntoBytes, KnownLayout, PartialEq)]
+struct DataRegister(u32);
+
+/// Receive Status Register/Error Clear Register, UARTRSR/UARTECR
+#[repr(transparent)]
+#[derive(Copy, Clone, Debug, Eq, FromBytes, Immutable, IntoBytes, KnownLayout, PartialEq)]
+struct ReceiveStatusRegister(u32);
+
+/// Flag Register, UARTFR
+#[repr(transparent)]
+#[derive(Copy, Clone, Debug, Eq, FromBytes, Immutable, IntoBytes, KnownLayout, PartialEq)]
+struct FlagsRegister(u32);
+
+/// Line Control Register, UARTLCR_H
+#[repr(transparent)]
+#[derive(Copy, Clone, Debug, Eq, FromBytes, Immutable, IntoBytes, KnownLayout, PartialEq)]
+struct LineControlRegister(u32);
+
+/// Control Register, UARTCR
+#[repr(transparent)]
+#[derive(Copy, Clone, Debug, Eq, FromBytes, Immutable, IntoBytes, KnownLayout, PartialEq)]
+struct ControlRegister(u32);
+
 bitflags! {
-    /// Data Register
-    #[repr(transparent)]
-    #[derive(Copy, Clone)]
-    struct DataRegister: u32 {
+    impl DataRegister: u32 {
         /// Overrun error
         const OE = 1 << 11;
         /// Break error
@@ -30,10 +53,7 @@ bitflags! {
         const FE = 1 << 8;
     }
 
-    /// Receive Status Register/Error Clear Register, UARTRSR/UARTECR
-    #[repr(transparent)]
-    #[derive(Copy, Clone)]
-    struct ReceiveStatusRegister : u32 {
+    impl ReceiveStatusRegister: u32 {
         /// Overrun error
         const OE = 1 << 3;
         /// Break error
@@ -44,10 +64,7 @@ bitflags! {
         const FE = 1 << 0;
     }
 
-    /// Flag Register, UARTFR
-    #[repr(transparent)]
-    #[derive(Copy, Clone)]
-    struct FlagsRegister: u32 {
+    impl FlagsRegister: u32 {
         /// Ring indicator
         const RI = 1 << 8;
         /// Transmit FIFO is empty
@@ -68,10 +85,7 @@ bitflags! {
         const CTS = 1 << 0;
     }
 
-    /// Line Control Register, UARTLCR_H
-    #[repr(transparent)]
-    #[derive(Copy, Clone)]
-    struct LineControlRegister: u32 {
+    impl LineControlRegister: u32 {
         /// Stick parity select.
         const SPS = 1 << 7;
         /// Word length
@@ -91,10 +105,7 @@ bitflags! {
         const BRK = 1 << 0;
     }
 
-     /// Control Register, UARTCR
-     #[repr(transparent)]
-     #[derive(Copy, Clone)]
-     struct ControlRegister: u32 {
+     impl ControlRegister: u32 {
         /// CTS hardware flow control enable
         const CTSEn = 1 << 15;
         /// RTS hardware flow control enable
@@ -123,6 +134,7 @@ bitflags! {
 }
 
 /// PL011 register map
+#[derive(Clone, Eq, FromBytes, Immutable, IntoBytes, KnownLayout, PartialEq)]
 #[repr(C, align(4))]
 pub struct PL011Registers {
     /// 0x000: Data Register
@@ -600,6 +612,7 @@ impl core::fmt::Write for Uart<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use zerocopy::transmute_mut;
 
     struct FakePL011Registers {
         regs: [u32; 1024],
@@ -623,15 +636,7 @@ mod tests {
         }
 
         fn get(&mut self) -> OwnedMmioPointer<PL011Registers> {
-            // SAFETY: PL011RegsRef always returns valid pointers because they come from a reference
-            // tied to its lifetime.
-            unsafe {
-                // regs_ptr points to a FakePL011Registers struct's regs field, that has the same size
-                // and alignment as PL011Registers
-                let regs_ptr = self.regs.as_mut_ptr().cast::<PL011Registers>();
-                assert!(regs_ptr.is_aligned());
-                OwnedMmioPointer::new(NonNull::new(regs_ptr).unwrap())
-            }
+            OwnedMmioPointer::from(transmute_mut!(&mut self.regs))
         }
 
         fn uart_for_test(&mut self) -> Uart {
