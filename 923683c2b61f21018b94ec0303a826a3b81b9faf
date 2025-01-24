@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7307765f_b8290dc3",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1000309
+      },
+      "writtenOn": "2025-01-24T12:24:01Z",
+      "side": 1,
+      "message": "I\u0027ve updated this to a new approach with a struct rather than a trait, I think this is better. PTAL.",
+      "revId": "923683c2b61f21018b94ec0303a826a3b81b9faf",
+      "serverId": "8f6f209b-db1a-4cbf-aa44-c8bc30e9bfda"
+    }
+  ]
+}
