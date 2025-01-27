@@ -20,6 +20,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "a69b6d50_55edc3fa",
+        "filename": "src/lib.rs",
+        "patchSetId": 4
+      },
+      "lineNbr": 260,
+      "author": {
+        "id": 1000309
+      },
+      "writtenOn": "2025-01-27T16:53:39Z",
+      "side": 1,
+      "message": "I\u0027d prefer to avoid the generic parameter on the `Uart` (and every other driver following this pattern). Could `KernelMapper` have a method to return an `OwnedMmioPointer`, which then gets passed in here? Or `KernelSpace` could have a method which directly returns an `OwnedMmioPointer\u003cT\u003e` rather than `KernelMapper\u003cT\u003e`.",
+      "parentUuid": "207bb960_feeff563",
+      "revId": "a5a5edb69780ca80da693c9826a078d042e3c5de",
+      "serverId": "8f6f209b-db1a-4cbf-aa44-c8bc30e9bfda"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "1aae77f6_0a475917",
         "filename": "src/lib.rs",
         "patchSetId": 4
@@ -31,6 +49,24 @@
       "writtenOn": "2025-01-27T15:54:56Z",
       "side": 1,
       "message": "It might worth mentioning that if there\u0027s an active virtual memory mapping, the address has to be mapped as a device region.",
+      "revId": "a5a5edb69780ca80da693c9826a078d042e3c5de",
+      "serverId": "8f6f209b-db1a-4cbf-aa44-c8bc30e9bfda"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8179f7b1_6ec903a7",
+        "filename": "src/lib.rs",
+        "patchSetId": 4
+      },
+      "lineNbr": 268,
+      "author": {
+        "id": 1000309
+      },
+      "writtenOn": "2025-01-27T16:53:39Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "1aae77f6_0a475917",
       "revId": "a5a5edb69780ca80da693c9826a078d042e3c5de",
       "serverId": "8f6f209b-db1a-4cbf-aa44-c8bc30e9bfda"
     }
