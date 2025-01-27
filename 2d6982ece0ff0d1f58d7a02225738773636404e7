@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "37bc083c_fad8fd91",
+        "filename": "src/lib.rs",
+        "patchSetId": 4
+      },
+      "lineNbr": 137,
+      "author": {
+        "id": 1000159
+      },
+      "writtenOn": "2025-01-27T17:03:34Z",
+      "side": 1,
+      "message": "Is there any practical use for Copy, Clone, Eq and PartialEq?",
+      "revId": "2d6982ece0ff0d1f58d7a02225738773636404e7",
+      "serverId": "8f6f209b-db1a-4cbf-aa44-c8bc30e9bfda"
+    }
+  ]
+}
