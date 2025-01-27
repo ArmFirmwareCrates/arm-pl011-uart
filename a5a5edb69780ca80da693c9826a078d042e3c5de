@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "207bb960_feeff563",
+        "filename": "src/lib.rs",
+        "patchSetId": 4
+      },
+      "lineNbr": 260,
+      "author": {
+        "id": 1000159
+      },
+      "writtenOn": "2025-01-27T15:54:56Z",
+      "side": 1,
+      "message": "There should be a MmioPointer trait which defines the ptr and ptr_mut functions, and Uart should get this as a generic parameter (just like it did with Deref before). This is necessary to be able to use the KernelMapper which would implement this trait. OwnedMmioPointer still can be the trivial implementation of the trait.",
+      "revId": "a5a5edb69780ca80da693c9826a078d042e3c5de",
+      "serverId": "8f6f209b-db1a-4cbf-aa44-c8bc30e9bfda"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1aae77f6_0a475917",
+        "filename": "src/lib.rs",
+        "patchSetId": 4
+      },
+      "lineNbr": 268,
+      "author": {
+        "id": 1000159
+      },
+      "writtenOn": "2025-01-27T15:54:56Z",
+      "side": 1,
+      "message": "It might worth mentioning that if there\u0027s an active virtual memory mapping, the address has to be mapped as a device region.",
+      "revId": "a5a5edb69780ca80da693c9826a078d042e3c5de",
+      "serverId": "8f6f209b-db1a-4cbf-aa44-c8bc30e9bfda"
+    }
+  ]
+}
