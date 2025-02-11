@@ -36,6 +36,24 @@
       "serverId": "8f6f209b-db1a-4cbf-aa44-c8bc30e9bfda"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "80a348ff_6cf11662",
+        "filename": "src/lib.rs",
+        "patchSetId": 4
+      },
+      "lineNbr": 260,
+      "author": {
+        "id": 1000309
+      },
+      "writtenOn": "2025-02-11T14:40:34Z",
+      "side": 1,
+      "message": "https://review.trustedfirmware.org/c/rust-spmc/rust-spmc/+/35389 is a possible approach to how this could work with `rust-spmc`\u0027s model. I think this is better than adding generic parameters to every driver crate, and also has the advantage that it can be adapted easily to work with driver crates which don\u0027t use `OwnedMmioPointer`.",
+      "parentUuid": "a69b6d50_55edc3fa",
+      "revId": "a5a5edb69780ca80da693c9826a078d042e3c5de",
+      "serverId": "8f6f209b-db1a-4cbf-aa44-c8bc30e9bfda"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "1aae77f6_0a475917",
