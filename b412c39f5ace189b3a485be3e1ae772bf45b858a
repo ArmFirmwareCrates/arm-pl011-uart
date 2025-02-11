@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d72119a8_fc2c2ce2",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1000309
+      },
+      "writtenOn": "2025-02-11T11:33:18Z",
+      "side": 1,
+      "message": "I\u0027ve rebased this to put it before the other more controversial patches, can it be submitted now?",
+      "revId": "b412c39f5ace189b3a485be3e1ae772bf45b858a",
+      "serverId": "8f6f209b-db1a-4cbf-aa44-c8bc30e9bfda"
+    }
+  ]
+}
