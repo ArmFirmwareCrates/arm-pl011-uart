@@ -2,10 +2,12 @@
 
 Driver implementation for the [PL011 UART peripheral](https://developer.arm.com/documentation/ddi0183/latest/).
 
-The main concept of the driver is that the `Uart` implementation expects a `Deref<Target = PL011Registers>` type. This
-type can be an actual reference of a `PL011Registers` structure or any other PAC (Peripheral Access Crate) specific
-type as long as it implements the required `Deref` trait. This also allows having custom wrappers around
-`PL011Registers` for project specific reasons, like virtual memory mapping of peripherals.
+The driver is designed to function regardless of whether a Memory Management Unit (MMU) is present.
+The primary role of the `OwnedMmioPointer` is to manage the lifetime of the peripheral, ensuring
+proper resource handling. In a system that includes an MMU, the peripheral's lifetime is dynamic
+because it is mapped into memory rather than having a fixed address. In a system without an MMU, the
+`OwnedMmioPointer` can be instantiated directly from the physical address of the register block,
+providing access to the peripheral without requiring memory mapping.
 
 ## Implemented features
 
@@ -33,7 +35,7 @@ The project is MIT and Apache-2.0 dual licensed, see `LICENSE-APACHE` and `LICEN
 
 ## Maintainers
 
-rust-spmc is a trustedfirmware.org maintained project. All contributions are ultimately merged by the maintainers
+arm-pl011-uart is a trustedfirmware.org maintained project. All contributions are ultimately merged by the maintainers
 listed below.
 
 * Bálint Dobszay <balint.dobszay@arm.com>
