@@ -271,7 +271,7 @@ pub struct OwnedMmioPointer<'a, T> {
     phantom: PhantomData<&'a mut T>,
 }
 
-impl<'a, T> OwnedMmioPointer<'a, T> {
+impl<T> OwnedMmioPointer<'_, T> {
     /// Creates a new `OwnedMmioPointer` from a non-null raw pointer.
     ///
     /// # Safety
@@ -614,7 +614,7 @@ impl embedded_io::ReadReady for Uart<'_> {
 
 impl core::fmt::Write for Uart<'_> {
     fn write_str(&mut self, s: &str) -> core::fmt::Result {
-        Ok(embedded_io::Write::write_all(self, s.as_bytes()).map_err(|_| core::fmt::Error)?)
+        embedded_io::Write::write_all(self, s.as_bytes()).map_err(|_| core::fmt::Error)
     }
 }
 
