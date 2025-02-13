@@ -19,9 +19,14 @@ providing access to the peripheral without requiring memory mapping.
 * Reading UART identification structure
 * 98% unit test coverage
 * Implementing various traits
-  * `embedded_hal_nb::serial::{Write, Read}`
-  * `embedded_io::{Write, Read}`
+  * `embedded_hal_nb::serial::{Write, Read}` (optional, behind the `embedded-hal-nb` feature flag)
+  * `embedded_io::{Write, Read}` (optional, behind the `embedded-io` feature flag)
   * `core::fmt::Write`
+
+## Feature flags
+
+* `embedded-hal-nb`: Adds implementations of `embedded-hal-nb` traits for the UART driver.
+* `embedded-io`: Adds implementations of `embedded-io` traits for the UART driver.
 
 ## Future plans
 
