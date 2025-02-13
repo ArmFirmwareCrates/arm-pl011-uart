@@ -238,6 +238,7 @@ impl Identification {
     const REVISION_MAX: u8 = 0x03;
     const CONFIGURATION: u8 = 0x00;
 
+    /// Check if the identification block describes a valid PL011 peripheral
     pub fn is_valid(&self) -> bool {
         self.part_number == Self::PART_NUMBER
             && self.designer == Self::DESIGNER_ARM
