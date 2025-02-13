@@ -43,6 +43,12 @@ struct LineControlRegister(u32);
 #[derive(Copy, Clone, Debug, Eq, FromBytes, Immutable, IntoBytes, KnownLayout, PartialEq)]
 struct ControlRegister(u32);
 
+/// Set of interrupts. This is used for the interrupt status registers (UARTRIS and UARTMIS),
+/// interrupt mask register (UARTIMSC) and and interrupt clear register (UARTICR).
+#[repr(transparent)]
+#[derive(Copy, Clone, Debug, Eq, FromBytes, Immutable, IntoBytes, KnownLayout, PartialEq)]
+pub struct Interrupts(u32);
+
 bitflags! {
     impl DataRegister: u32 {
         /// Overrun error
@@ -107,7 +113,7 @@ bitflags! {
         const BRK = 1 << 0;
     }
 
-     impl ControlRegister: u32 {
+    impl ControlRegister: u32 {
         /// CTS hardware flow control enable
         const CTSEn = 1 << 15;
         /// RTS hardware flow control enable
@@ -132,7 +138,32 @@ bitflags! {
         const SIREN = 1 << 1;
         /// UART enable
         const UARTEN = 1 << 0;
-     }
+    }
+
+    impl Interrupts: u32 {
+        /// Overrun error interrupt.
+        const OEI = 1 << 10;
+        /// Break error interrupt.
+        const BEI = 1 << 9;
+        /// Parity error interrupt.
+        const PEI = 1 << 8;
+        /// Framing error interrupt.
+        const FEI = 1 << 7;
+        /// Receive timeout interrupt.
+        const RTI = 1 << 6;
+        /// Transmit interrupt.
+        const TXI = 1 << 5;
+        /// Receive interrupt.
+        const RXI = 1 << 4;
+        /// nUARTDSR modem interrupt.
+        const DSRMI = 1 << 3;
+        /// nUARTDCD modem interrupt.
+        const DCDMI = 1 << 2;
+        /// nUARTCTS modem interrupt.
+        const CTSMI = 1 << 1;
+        /// nUARTRI modem interrupt.
+        const RIMI = 1 << 0;
+    }
 }
 
 /// PL011 register map
@@ -162,13 +193,13 @@ pub struct PL011Registers {
     /// 0x034: Interrupt FIFO Level Select Register
     uartifls: u32,
     /// 0x038: Interrupt Mask Set/Clear Register
-    uartimsc: u32,
+    uartimsc: Interrupts,
     /// 0x03C: Raw Interrupt Status Register
-    uartris: u32,
+    uartris: Interrupts,
     /// 0x040: Masked INterrupt Status Register
-    uartmis: u32,
+    uartmis: Interrupts,
     /// 0x044: Interrupt Clear Register
-    uarticr: u32,
+    uarticr: Interrupts,
     /// 0x048: DMA control Register
     uartdmacr: u32,
     /// 0x04C - 0xFDC
@@ -483,6 +514,41 @@ impl<'a> Uart<'a> {
         }
 
         Ok((ibrd, fbrd))
+    }
+
+    /// Reads the raw interrupt status register.
+    pub fn raw_interrupt_status(&self) -> Interrupts {
+        // SAFETY: The caller of OwnedMmioPointer::new promised that it wraps a valid and unique
+        // register block.
+        unsafe { (&raw const (*self.regs.ptr()).uartris).read_volatile() }
+    }
+
+    /// Reads the masked interrupt status register.
+    pub fn masked_interrupt_status(&self) -> Interrupts {
+        // SAFETY: The caller of OwnedMmioPointer::new promised that it wraps a valid and unique
+        // register block.
+        unsafe { (&raw const (*self.regs.ptr()).uartmis).read_volatile() }
+    }
+
+    /// Returns the current set of interrupt masks.
+    pub fn interrupt_masks(&self) -> Interrupts {
+        // SAFETY: The caller of OwnedMmioPointer::new promised that it wraps a valid and unique
+        // register block.
+        unsafe { (&raw const (*self.regs.ptr()).uartimsc).read_volatile() }
+    }
+
+    /// Sets the interrupt masks.
+    pub fn set_interrupt_masks(&mut self, masks: Interrupts) {
+        // SAFETY: The caller of OwnedMmioPointer::new promised that it wraps a valid and unique
+        // register block.
+        unsafe { (&raw mut (*self.regs.ptr_mut()).uartimsc).write_volatile(masks) }
+    }
+
+    /// Clears the given set of interrupts.
+    pub fn clear_interrupts(&mut self, interrupts: Interrupts) {
+        // SAFETY: The caller of OwnedMmioPointer::new promised that it wraps a valid and unique
+        // register block.
+        unsafe { (&raw mut (*self.regs.ptr_mut()).uarticr).write_volatile(interrupts) }
     }
 }
 
@@ -952,6 +1018,58 @@ mod tests {
         assert_eq!(0x03, identification.revision_number);
         assert_eq!(0x00, identification.configuration);
         assert!(identification.is_valid());
+    }
+
+    #[test]
+    fn interrupt_status() {
+        let mut regs = FakePL011Registers::new();
+
+        {
+            let uart = regs.uart_for_test();
+            assert_eq!(uart.raw_interrupt_status(), Interrupts::empty());
+            assert_eq!(uart.masked_interrupt_status(), Interrupts::empty());
+        }
+
+        {
+            regs.reg_write(0x3c, 0b0000_0110_0000_1001);
+            regs.reg_write(0x40, 0b0000_0100_0000_0001);
+            let uart = regs.uart_for_test();
+            assert_eq!(
+                uart.raw_interrupt_status(),
+                Interrupts::OEI | Interrupts::BEI | Interrupts::DSRMI | Interrupts::RIMI
+            );
+            assert_eq!(
+                uart.masked_interrupt_status(),
+                Interrupts::OEI | Interrupts::RIMI
+            );
+        }
+    }
+
+    #[test]
+    fn interrupt_mask() {
+        let mut regs = FakePL011Registers::new();
+
+        {
+            let mut uart = regs.uart_for_test();
+            assert_eq!(uart.interrupt_masks(), Interrupts::empty());
+
+            uart.set_interrupt_masks(Interrupts::BEI | Interrupts::RTI);
+            assert_eq!(uart.interrupt_masks(), Interrupts::BEI | Interrupts::RTI);
+        }
+
+        assert_eq!(regs.reg_read(0x38), 0b0000_0010_0100_0000);
+    }
+
+    #[test]
+    fn interrupt_clear() {
+        let mut regs = FakePL011Registers::new();
+
+        {
+            let mut uart = regs.uart_for_test();
+            uart.clear_interrupts(Interrupts::OEI | Interrupts::RIMI | Interrupts::RTI);
+        }
+
+        assert_eq!(regs.reg_read(0x44), 0b0000_0100_0100_0001);
     }
 
     #[test]
