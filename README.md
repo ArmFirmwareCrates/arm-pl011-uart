@@ -18,6 +18,7 @@ providing access to the peripheral without requiring memory mapping.
 * Handling UART errors
 * Reading UART identification structure
 * 98% unit test coverage
+* Reading, masking and clearing interrupts
 * Implementing various traits
   * `embedded_hal_nb::serial::{Write, Read}` (optional, behind the `embedded-hal-nb` feature flag)
   * `embedded_io::{Write, Read}` (optional, behind the `embedded-io` feature flag)
@@ -30,9 +31,8 @@ providing access to the peripheral without requiring memory mapping.
 
 ## Future plans
 
-  * Implementing interrupt enablement
-  * Handling modem control and status signals
-  * Adding peripheral testing
+* Handling modem control and status signals
+* Adding peripheral testing
 
 ## License
 
