@@ -6,11 +6,13 @@
 #![deny(clippy::undocumented_unsafe_blocks)]
 #![deny(unsafe_op_in_unsafe_fn)]
 
+#[cfg(feature = "embedded-hal-nb")]
+mod embedded_hal_nb;
+#[cfg(feature = "embedded-io")]
+mod embedded_io;
+
 use bitflags::bitflags;
-use core::marker::PhantomData;
-use core::ptr::NonNull;
-use embedded_hal_nb::nb;
-use embedded_hal_nb::serial;
+use core::{fmt, marker::PhantomData, ptr::NonNull};
 use thiserror::Error;
 use zerocopy::{FromBytes, Immutable, IntoBytes, KnownLayout};
 
@@ -492,157 +494,40 @@ unsafe impl<T> Send for OwnedMmioPointer<'_, T> {}
 // multiple threads simultaneously.
 unsafe impl Sync for Uart<'_> {}
 
-// embedded-nb implementation
-
-impl serial::ErrorType for Uart<'_> {
-    type Error = Error;
-}
-
-impl serial::Error for Error {
-    fn kind(&self) -> serial::ErrorKind {
-        match self {
-            Error::InvalidParameter => serial::ErrorKind::Other,
-            Error::Overrun => serial::ErrorKind::Overrun,
-            Error::Break => serial::ErrorKind::Other,
-            Error::Parity => serial::ErrorKind::Parity,
-            Error::Framing => serial::ErrorKind::FrameFormat,
-        }
-    }
-}
-
-impl serial::Write for Uart<'_> {
-    fn write(&mut self, word: u8) -> nb::Result<(), Self::Error> {
-        if self.is_tx_fifo_full() {
-            return Err(nb::Error::WouldBlock);
-        }
-
-        self.write_word(word);
-
-        Ok(())
-    }
-
-    fn flush(&mut self) -> nb::Result<(), Self::Error> {
-        if self.is_busy() {
-            Err(nb::Error::WouldBlock)
-        } else {
-            Ok(())
-        }
-    }
-}
-
-impl serial::Read for Uart<'_> {
-    fn read(&mut self) -> nb::Result<u8, Self::Error> {
-        match self.read_word() {
-            Ok(None) => Err(nb::Error::WouldBlock),
-            Ok(Some(word)) => Ok(word),
-            Err(err) => Err(nb::Error::Other(err)),
-        }
-    }
-}
-
-// embedded-io implementation
-impl embedded_io::ErrorType for Uart<'_> {
-    type Error = Error;
-}
-
-impl embedded_io::Error for Error {
-    fn kind(&self) -> embedded_io::ErrorKind {
-        match self {
-            Self::Break | Self::Overrun => embedded_io::ErrorKind::Other,
-            Self::Framing | Self::Parity => embedded_io::ErrorKind::InvalidData,
-            Self::InvalidParameter => embedded_io::ErrorKind::InvalidInput,
-        }
-    }
-}
-
-impl embedded_io::Write for Uart<'_> {
-    fn write(&mut self, buf: &[u8]) -> Result<usize, Self::Error> {
-        let mut bytes_written = 0;
-        if !buf.is_empty() {
+impl fmt::Write for Uart<'_> {
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        for byte in s.as_bytes() {
             // Wait until there is room in the TX buffer.
             while self.is_tx_fifo_full() {}
-
-            // Write until the TX buffer is full or we run out of bytes to write. The caller will
-            // take care of retrying until the full buffer is written.
-            for byte in buf {
-                self.write_word(*byte);
-                bytes_written += 1;
-                if self.is_tx_fifo_full() {
-                    break;
-                }
-            }
+            self.write_word(*byte);
         }
-        Ok(bytes_written)
-    }
-
-    fn flush(&mut self) -> Result<(), Self::Error> {
-        while self.is_busy() {}
         Ok(())
-    }
-}
-
-impl embedded_io::WriteReady for Uart<'_> {
-    fn write_ready(&mut self) -> Result<bool, Self::Error> {
-        Ok(!self.is_tx_fifo_full())
-    }
-}
-
-impl embedded_io::Read for Uart<'_> {
-    fn read(&mut self, buf: &mut [u8]) -> Result<usize, Self::Error> {
-        if buf.is_empty() {
-            Ok(0)
-        } else {
-            // Wait until a byte is available to read.
-            loop {
-                // Read a single byte. No need to wait for more, the caller will retry until it has
-                // as many as it wants.
-                if let Some(byte) = self.read_word()? {
-                    buf[0] = byte;
-                    return Ok(1);
-                }
-            }
-        }
-    }
-}
-
-impl embedded_io::ReadReady for Uart<'_> {
-    fn read_ready(&mut self) -> Result<bool, Self::Error> {
-        Ok(!self.is_rx_fifo_empty())
-    }
-}
-
-// core::fmt::Write implementation
-
-impl core::fmt::Write for Uart<'_> {
-    fn write_str(&mut self, s: &str) -> core::fmt::Result {
-        embedded_io::Write::write_all(self, s.as_bytes()).map_err(|_| core::fmt::Error)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use embedded_io::{ReadReady, WriteReady};
     use zerocopy::transmute_mut;
 
-    struct FakePL011Registers {
+    pub struct FakePL011Registers {
         regs: [u32; 1024],
     }
 
     impl FakePL011Registers {
-        fn new() -> Self {
+        pub fn new() -> Self {
             Self { regs: [0u32; 1024] }
         }
 
-        fn clear(&mut self) {
+        pub fn clear(&mut self) {
             self.regs.fill(0);
         }
 
-        fn reg_write(&mut self, offset: usize, value: u32) {
+        pub fn reg_write(&mut self, offset: usize, value: u32) {
             self.regs[offset / 4] = value;
         }
 
-        fn reg_read(&self, offset: usize) -> u32 {
+        pub fn reg_read(&self, offset: usize) -> u32 {
             self.regs[offset / 4]
         }
 
@@ -650,7 +535,7 @@ mod tests {
             OwnedMmioPointer::from(transmute_mut!(&mut self.regs))
         }
 
-        fn uart_for_test(&mut self) -> Uart {
+        pub fn uart_for_test(&mut self) -> Uart {
             Uart::new(self.get())
         }
     }
@@ -1067,180 +952,6 @@ mod tests {
         assert_eq!(0x03, identification.revision_number);
         assert_eq!(0x00, identification.configuration);
         assert!(identification.is_valid());
-    }
-
-    #[test]
-    fn error_kind() {
-        assert_eq!(
-            serial::ErrorKind::Other,
-            serial::Error::kind(&Error::InvalidParameter)
-        );
-
-        assert_eq!(
-            serial::ErrorKind::Overrun,
-            serial::Error::kind(&Error::Overrun)
-        );
-
-        assert_eq!(serial::ErrorKind::Other, serial::Error::kind(&Error::Break));
-
-        assert_eq!(
-            serial::ErrorKind::Parity,
-            serial::Error::kind(&Error::Parity)
-        );
-
-        assert_eq!(
-            serial::ErrorKind::FrameFormat,
-            serial::Error::kind(&Error::Framing)
-        );
-
-        assert_eq!(
-            embedded_io::ErrorKind::InvalidData,
-            embedded_io::Error::kind(&Error::Framing)
-        );
-    }
-
-    #[test]
-    fn serial_write() {
-        let mut regs = FakePL011Registers::new();
-
-        {
-            let mut uart = regs.uart_for_test();
-            assert_eq!(Ok(()), serial::Write::write(&mut uart, 0x41));
-            assert_eq!(0x41, regs.reg_read(0x000));
-        }
-
-        regs.clear();
-
-        {
-            regs.reg_write(0x018, 1 << 5);
-            let mut uart = regs.uart_for_test();
-            assert_eq!(
-                Err(nb::Error::WouldBlock),
-                serial::Write::write(&mut uart, 0x41)
-            );
-        }
-
-        regs.clear();
-
-        {
-            let mut uart = regs.uart_for_test();
-            assert_eq!(Ok(()), serial::Write::flush(&mut uart));
-        }
-        regs.clear();
-
-        {
-            regs.reg_write(0x018, 1 << 3);
-            let mut uart = regs.uart_for_test();
-            assert_eq!(Err(nb::Error::WouldBlock), serial::Write::flush(&mut uart));
-        }
-    }
-
-    #[test]
-    fn serial_read() {
-        let mut regs = FakePL011Registers::new();
-
-        {
-            regs.reg_write(0x000, 0x41);
-
-            let mut uart = regs.uart_for_test();
-            assert_eq!(Ok(0x41), serial::Read::read(&mut uart));
-        }
-
-        regs.clear();
-
-        {
-            regs.reg_write(0x000, 0x41);
-
-            let mut uart = regs.uart_for_test();
-            assert_eq!(Ok(0x41), serial::Read::read(&mut uart));
-        }
-
-        regs.clear();
-
-        {
-            regs.reg_write(0x000, 1 << 11);
-
-            let mut uart = regs.uart_for_test();
-            assert_eq!(
-                Err(nb::Error::Other(Error::Overrun)),
-                serial::Read::read(&mut uart)
-            );
-        }
-
-        regs.clear();
-
-        {
-            regs.reg_write(0x018, 1 << 4);
-
-            let mut uart = regs.uart_for_test();
-            assert_eq!(Err(nb::Error::WouldBlock), serial::Read::read(&mut uart));
-        }
-    }
-
-    #[test]
-    fn embeddedio_write_empty() {
-        let mut regs = FakePL011Registers::new();
-        let mut uart = regs.uart_for_test();
-        assert_eq!(Ok(0), embedded_io::Write::write(&mut uart, &[]));
-        assert_eq!(Ok(()), embedded_io::Write::flush(&mut uart));
-    }
-
-    #[test]
-    fn embeddedio_write() {
-        let mut regs = FakePL011Registers::new();
-        let mut uart = regs.uart_for_test();
-        assert_eq!(Ok(2), embedded_io::Write::write(&mut uart, &[1, 2]));
-        assert_eq!(Ok(()), embedded_io::Write::write_all(&mut uart, &[1, 2]));
-        assert_eq!(Ok(()), embedded_io::Write::flush(&mut uart));
-    }
-
-    #[test]
-    fn embeddedio_write_fifo_full() {
-        let mut regs = FakePL011Registers::new();
-        {
-            let mut uart = regs.uart_for_test();
-            assert_eq!(Ok(true), uart.write_ready());
-        }
-
-        {
-            regs.reg_write(0x018, 1 << 5);
-            let mut uart = regs.uart_for_test();
-            assert_eq!(Ok(false), uart.write_ready());
-        }
-    }
-
-    #[test]
-    fn embeddedio_read_empty() {
-        let mut regs = FakePL011Registers::new();
-        let mut uart = regs.uart_for_test();
-        let mut data = [];
-        assert_eq!(Ok(0), embedded_io::Read::read(&mut uart, &mut data));
-    }
-
-    #[test]
-    fn embeddedio_read() {
-        let mut regs = FakePL011Registers::new();
-        let mut uart = regs.uart_for_test();
-        let mut data = [0u8; 2];
-        assert_eq!(Ok(1), embedded_io::Read::read(&mut uart, &mut data));
-        assert_eq!(data, [0, 0]);
-        assert_eq!(Ok(()), embedded_io::Read::read_exact(&mut uart, &mut data));
-        assert_eq!(data, [0, 0]);
-    }
-
-    #[test]
-    fn embeddedio_read_fifo_empty() {
-        let mut regs = FakePL011Registers::new();
-        {
-            let mut uart = regs.uart_for_test();
-            assert_eq!(Ok(true), uart.read_ready());
-        }
-
-        {
-            regs.reg_write(0x018, 1 << 4);
-            let mut uart = regs.uart_for_test();
-            assert_eq!(Ok(false), uart.read_ready());
-        }
     }
 
     #[test]
