@@ -16,6 +16,24 @@
       "message": "Please update README.md\n* Describe the new features\n* Mark implemented traits optional",
       "revId": "4eb11c6683744916b6688f32823a8e910e83124a",
       "serverId": "8f6f209b-db1a-4cbf-aa44-c8bc30e9bfda"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "50cbceb8_8a9d4f20",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1000309
+      },
+      "writtenOn": "2025-02-19T13:36:59Z",
+      "side": 1,
+      "message": "Done. Also added a changelog.",
+      "parentUuid": "38401118_b32f9683",
+      "revId": "4eb11c6683744916b6688f32823a8e910e83124a",
+      "serverId": "8f6f209b-db1a-4cbf-aa44-c8bc30e9bfda"
     }
   ]
 }
