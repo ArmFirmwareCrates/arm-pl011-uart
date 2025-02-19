@@ -12,7 +12,8 @@ mod embedded_hal_nb;
 mod embedded_io;
 
 use bitflags::bitflags;
-use core::{fmt, marker::PhantomData, ptr::NonNull};
+use core::fmt;
+use safe_mmio::OwnedMmioPointer;
 use thiserror::Error;
 use zerocopy::{FromBytes, Immutable, IntoBytes, KnownLayout};
 
@@ -295,52 +296,6 @@ pub enum Error {
     Framing,
 }
 
-/// A pointer to the registers of some MMIO device.
-///
-/// It is guaranteed to be valid and unique; no other access to the MMIO space of the device may
-/// happen for the lifetime `'a`.
-#[derive(Debug, Eq, PartialEq)]
-pub struct OwnedMmioPointer<'a, T> {
-    regs: NonNull<T>,
-    phantom: PhantomData<&'a mut T>,
-}
-
-impl<T> OwnedMmioPointer<'_, T> {
-    /// Creates a new `OwnedMmioPointer` from a non-null raw pointer.
-    ///
-    /// # Safety
-    ///
-    /// `ptr` must be a properly aligned and valid pointer to some MMIO address space of type T,
-    /// which is mapped as device memory and valid to read and write from any thread with volatile
-    /// operations. There must not have any other aliases which are used to access the same MMIO
-    /// region while this `OwnedMmioPointer` exists.
-    pub unsafe fn new(regs: NonNull<T>) -> Self {
-        Self {
-            regs,
-            phantom: PhantomData,
-        }
-    }
-
-    /// Returns a raw const pointer to the MMIO registers.
-    pub fn ptr(&self) -> *const T {
-        self.regs.as_ptr()
-    }
-
-    /// Returns a raw mut pointer to the MMIO registers.
-    pub fn ptr_mut(&mut self) -> *mut T {
-        self.regs.as_ptr()
-    }
-}
-
-impl<'a, T> From<&'a mut T> for OwnedMmioPointer<'a, T> {
-    fn from(r: &'a mut T) -> Self {
-        Self {
-            regs: r.into(),
-            phantom: PhantomData,
-        }
-    }
-}
-
 /// PL011 UART implementation
 pub struct Uart<'a> {
     regs: OwnedMmioPointer<'a, PL011Registers>,
@@ -551,10 +506,6 @@ impl<'a> Uart<'a> {
         unsafe { (&raw mut (*self.regs.ptr_mut()).uarticr).write_volatile(interrupts) }
     }
 }
-
-// SAFETY: The caller of `OwnedMmioPointer::new` promises that the MMIO registers can be accessed
-// from any thread.
-unsafe impl<T> Send for OwnedMmioPointer<'_, T> {}
 
 // SAFETY: An `&Uart` only allows operations which read registers, which can safely be done from
 // multiple threads simultaneously.
