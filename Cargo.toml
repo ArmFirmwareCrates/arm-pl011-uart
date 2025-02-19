@@ -7,6 +7,7 @@ version = "0.1.0"
 authors = [
     "Balint Dobszay <balint.dobszay@arm.com>",
     "Imre Kis <imre.kis@arm.com>",
+    "Andrew Walbran <qwandor@google.com>",
 ]
 description = "Arm PrimeCell UART (PL011) driver"
 edition = "2021"
