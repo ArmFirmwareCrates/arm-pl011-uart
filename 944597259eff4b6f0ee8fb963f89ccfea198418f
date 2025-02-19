@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "dbc0c074_c67ed34f",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1000159
+      },
+      "writtenOn": "2025-02-19T13:00:15Z",
+      "side": 1,
+      "message": "Please move interrupt enablement from future plans to the implemented features section in README.md.",
+      "revId": "944597259eff4b6f0ee8fb963f89ccfea198418f",
+      "serverId": "8f6f209b-db1a-4cbf-aa44-c8bc30e9bfda"
+    }
+  ]
+}
