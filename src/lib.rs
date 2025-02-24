@@ -258,6 +258,16 @@ pub struct LineConfig {
     pub stop_bits: StopBits,
 }
 
+/// RX/TX interrupt FIFO levels
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum FifoLevel {
+    Bytes4 = 0b000,
+    Bytes8 = 0b001,
+    Bytes16 = 0b010,
+    Bytes24 = 0b011,
+    Bytes28 = 0b100,
+}
+
 /// UART peripheral identification structure
 pub struct Identification {
     part_number: u16,
@@ -469,6 +479,16 @@ impl<'a> Uart<'a> {
         }
 
         Ok((ibrd, fbrd))
+    }
+
+    /// Sets trigger levels for RX and TX interrupts.
+    /// The interrupts are generated when the fill level progresses through the trigger level.
+    pub fn set_interrupt_fifo_levels(&mut self, rx_level: FifoLevel, tx_level: FifoLevel) {
+        let fifo_levels = ((rx_level as u32) << 3) | tx_level as u32;
+
+        // SAFETY: The caller of OwnedMmioPointer::new promised that it wraps a valid and unique
+        // register block.
+        unsafe { (&raw mut (*self.regs.ptr_mut()).uartifls).write_volatile(fifo_levels) }
     }
 
     /// Reads the raw interrupt status register.
@@ -969,6 +989,41 @@ mod tests {
         assert_eq!(0x03, identification.revision_number);
         assert_eq!(0x00, identification.configuration);
         assert!(identification.is_valid());
+    }
+
+    #[test]
+    fn fifo_level() {
+        let mut regs = FakePL011Registers::new();
+
+        {
+            let mut uart = regs.uart_for_test();
+            uart.set_interrupt_fifo_levels(FifoLevel::Bytes4, FifoLevel::Bytes8);
+        }
+        assert_eq!(regs.reg_read(0x34), 0x01);
+
+        {
+            let mut uart = regs.uart_for_test();
+            uart.set_interrupt_fifo_levels(FifoLevel::Bytes8, FifoLevel::Bytes16);
+        }
+        assert_eq!(regs.reg_read(0x34), 0x0a);
+
+        {
+            let mut uart = regs.uart_for_test();
+            uart.set_interrupt_fifo_levels(FifoLevel::Bytes16, FifoLevel::Bytes24);
+        }
+        assert_eq!(regs.reg_read(0x34), 0x13);
+
+        {
+            let mut uart = regs.uart_for_test();
+            uart.set_interrupt_fifo_levels(FifoLevel::Bytes24, FifoLevel::Bytes28);
+        }
+        assert_eq!(regs.reg_read(0x34), 0x1c);
+
+        {
+            let mut uart = regs.uart_for_test();
+            uart.set_interrupt_fifo_levels(FifoLevel::Bytes28, FifoLevel::Bytes4);
+        }
+        assert_eq!(regs.reg_read(0x34), 0x20);
     }
 
     #[test]

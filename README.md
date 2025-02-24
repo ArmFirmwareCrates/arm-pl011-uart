@@ -18,6 +18,7 @@ providing access to the peripheral without requiring memory mapping.
 * Handling UART errors
 * Reading UART identification structure
 * 98% unit test coverage
+* Setting FIFO level of RX/TX interrupts
 * Reading, masking and clearing interrupts
 * Implementing various traits
   * `embedded_hal_nb::serial::{Write, Read}` (optional, behind the `embedded-hal-nb` feature flag)
