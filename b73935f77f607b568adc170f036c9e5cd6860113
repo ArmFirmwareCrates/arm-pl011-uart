@@ -1,0 +1,6 @@
+Code-Review+2: Bálint Dobszay <balint.dobszay@arm.com>
+Submitted-by: Bálint Dobszay <balint.dobszay@arm.com>
+Submitted-at: Mon, 24 Feb 2025 18:43:32 +0100
+Reviewed-on: https://review.trustedfirmware.org/c/rust-spmc/arm-pl011-uart/+/35763
+Project: rust-spmc/arm-pl011-uart
+Branch: refs/heads/main
