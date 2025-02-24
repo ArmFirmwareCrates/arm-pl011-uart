@@ -252,6 +252,7 @@ pub enum StopBits {
 }
 
 /// UART line config structure
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct LineConfig {
     pub data_bits: DataBits,
     pub parity: Parity,
@@ -259,11 +260,12 @@ pub struct LineConfig {
 }
 
 /// UART peripheral identification structure
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Identification {
-    part_number: u16,
-    designer: u8,
-    revision_number: u8,
-    configuration: u8,
+    pub part_number: u16,
+    pub designer: u8,
+    pub revision_number: u8,
+    pub configuration: u8,
 }
 
 impl Identification {
