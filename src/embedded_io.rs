@@ -81,9 +81,16 @@ mod tests {
 
     #[test]
     fn error_kind() {
+        assert_eq!(ErrorKind::Other, embedded_io::Error::kind(&Error::Break));
+
         assert_eq!(
             ErrorKind::InvalidData,
             embedded_io::Error::kind(&Error::Framing)
+        );
+
+        assert_eq!(
+            ErrorKind::InvalidInput,
+            embedded_io::Error::kind(&Error::InvalidParameter)
         );
     }
 
