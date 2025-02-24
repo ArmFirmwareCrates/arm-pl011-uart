@@ -13,7 +13,7 @@ mod embedded_io;
 
 use bitflags::bitflags;
 use core::fmt;
-use safe_mmio::OwnedMmioPointer;
+pub use safe_mmio::OwnedMmioPointer;
 use thiserror::Error;
 use zerocopy::{FromBytes, Immutable, IntoBytes, KnownLayout};
 
