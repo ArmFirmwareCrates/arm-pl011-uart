@@ -1,0 +1,8 @@
+Code-Review+1: Andrew Walbran <qwandor@google.com>
+Code-Review+2: Bálint Dobszay <balint.dobszay@arm.com>
+Submitted-by: Bálint Dobszay <balint.dobszay@arm.com>
+Submitted-at: Mon, 24 Feb 2025 18:40:17 +0100
+Reviewed-on: https://review.trustedfirmware.org/c/rust-spmc/arm-pl011-uart/+/35753
+Comments-Total: 2
+Project: rust-spmc/arm-pl011-uart
+Branch: refs/heads/main
