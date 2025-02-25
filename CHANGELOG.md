@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.0
 
 - Made `embedded-hal` and `embedded-io-nb` trait implementations optional, behind corresponding
   feature flags.
