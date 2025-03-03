@@ -13,6 +13,7 @@ mod embedded_io;
 
 use bitflags::bitflags;
 use core::fmt;
+use derive_mmio::Mmio;
 pub use safe_mmio::OwnedMmioPointer;
 use thiserror::Error;
 use zerocopy::{FromBytes, Immutable, IntoBytes, KnownLayout};
@@ -168,7 +169,7 @@ bitflags! {
 }
 
 /// PL011 register map
-#[derive(Clone, Eq, FromBytes, Immutable, IntoBytes, KnownLayout, PartialEq)]
+#[derive(Clone, Eq, FromBytes, Immutable, IntoBytes, KnownLayout, PartialEq, Mmio)]
 #[repr(C, align(4))]
 pub struct PL011Registers {
     /// 0x000: Data Register
@@ -345,18 +346,13 @@ impl<'a> Uart<'a> {
 
         // SAFETY: The caller of OwnedMmioPointer::new promised that it wraps a valid and unique
         // register block.
-        unsafe {
-            (&raw mut (*self.regs.ptr_mut()).uartrsr_ecr).write_volatile(0);
-            (&raw mut (*self.regs.ptr_mut()).uartcr).write_volatile(ControlRegister::empty());
-
-            (&raw mut (*self.regs.ptr_mut()).uartibrd).write_volatile(uartibrd);
-            (&raw mut (*self.regs.ptr_mut()).uartfbrd).write_volatile(uartfbrd);
-            (&raw mut (*self.regs.ptr_mut()).uartlcr_h).write_volatile(line_control);
-
-            (&raw mut (*self.regs.ptr_mut()).uartcr).write_volatile(
-                ControlRegister::RXE | ControlRegister::TXE | ControlRegister::UARTEN,
-            );
-        }
+        let mut regs = unsafe { PL011Registers::new_mmio(self.regs.ptr_mut()) };
+        regs.write_uartrsr_ecr(0);
+        regs.write_uartcr(ControlRegister::empty());
+        regs.write_uartibrd(uartibrd);
+        regs.write_uartfbrd(uartfbrd);
+        regs.write_uartlcr_h(line_control);
+        regs.write_uartcr(ControlRegister::RXE | ControlRegister::TXE | ControlRegister::UARTEN);
 
         Ok(())
     }
@@ -365,9 +361,8 @@ impl<'a> Uart<'a> {
     pub fn disable(&mut self) {
         // SAFETY: The caller of OwnedMmioPointer::new promised that it wraps a valid and unique
         // register block.
-        unsafe {
-            (&raw mut (*self.regs.ptr_mut()).uartcr).write_volatile(ControlRegister::empty());
-        }
+        let mut regs = unsafe { PL011Registers::new_mmio(self.regs.ptr_mut()) };
+        regs.write_uartcr(ControlRegister::empty());
     }
 
     /// Check if receive FIFO is empty
@@ -400,6 +395,9 @@ impl<'a> Uart<'a> {
         // SAFETY: The caller of OwnedMmioPointer::new promised that it wraps a valid and unique
         // register block.
         unsafe { (&raw const (*self.regs.ptr()).uartfr).read_volatile() }
+
+        // let regs = unsafe { PL011Registers::new_mmio(self.regs.ptr()) };
+        // regs.read_uartfr()
     }
 
     /// Non-blocking read of a single byte from the UART.
@@ -413,6 +411,9 @@ impl<'a> Uart<'a> {
         // SAFETY: The caller of OwnedMmioPointer::new promised that it wraps a valid and unique
         // register block.
         let dr = unsafe { (&raw const (*self.regs.ptr()).uartdr).read_volatile() };
+
+        // let regs = unsafe { PL011Registers::new_mmio(self.regs.ptr()) };
+        // let dr = regs.read_uartdr()
 
         let flags = DataRegister::from_bits_truncate(dr);
 
@@ -433,9 +434,8 @@ impl<'a> Uart<'a> {
     pub fn write_word(&mut self, word: u8) {
         // SAFETY: The caller of OwnedMmioPointer::new promised that it wraps a valid and unique
         // register block.
-        unsafe {
-            (&raw mut (*self.regs.ptr_mut()).uartdr).write_volatile(word as u32);
-        }
+        let mut regs = unsafe { PL011Registers::new_mmio(self.regs.ptr_mut()) };
+        regs.write_uartdr(word.into());
     }
 
     /// Read UART peripheral identification structure
@@ -450,6 +450,16 @@ impl<'a> Uart<'a> {
                 (&raw const (*self.regs.ptr()).uartperiphid3).read_volatile(),
             ]
         };
+
+        // let regs = unsafe { PL011Registers::new_mmio(self.regs.ptr()) };
+        // let id: [u32; 4] = unsafe {
+        //     [
+        //         regs.read_uartperiphid0(),
+        //         regs.read_uartperiphid1(),
+        //         regs.read_uartperiphid2(),
+        //         regs.read_uartperiphid3(),
+        //     ]
+        // };
 
         Identification {
             part_number: (id[0] & 0xff) as u16 | ((id[1] & 0x0f) << 8) as u16,
@@ -490,7 +500,8 @@ impl<'a> Uart<'a> {
 
         // SAFETY: The caller of OwnedMmioPointer::new promised that it wraps a valid and unique
         // register block.
-        unsafe { (&raw mut (*self.regs.ptr_mut()).uartifls).write_volatile(fifo_levels) }
+        let mut regs = unsafe { PL011Registers::new_mmio(self.regs.ptr_mut()) };
+        regs.write_uartifls(fifo_levels);
     }
 
     /// Reads the raw interrupt status register.
@@ -498,6 +509,9 @@ impl<'a> Uart<'a> {
         // SAFETY: The caller of OwnedMmioPointer::new promised that it wraps a valid and unique
         // register block.
         unsafe { (&raw const (*self.regs.ptr()).uartris).read_volatile() }
+
+        // let regs = unsafe { PL011Registers::new_mmio(self.regs.ptr()) };
+        // regs.read_uartris()
     }
 
     /// Reads the masked interrupt status register.
@@ -505,6 +519,9 @@ impl<'a> Uart<'a> {
         // SAFETY: The caller of OwnedMmioPointer::new promised that it wraps a valid and unique
         // register block.
         unsafe { (&raw const (*self.regs.ptr()).uartmis).read_volatile() }
+
+        // let regs = unsafe { PL011Registers::new_mmio(self.regs.ptr()) };
+        // regs.read_uartmis()
     }
 
     /// Returns the current set of interrupt masks.
@@ -512,20 +529,25 @@ impl<'a> Uart<'a> {
         // SAFETY: The caller of OwnedMmioPointer::new promised that it wraps a valid and unique
         // register block.
         unsafe { (&raw const (*self.regs.ptr()).uartimsc).read_volatile() }
+
+        // let regs = unsafe { PL011Registers::new_mmio(self.regs.ptr()) };
+        // regs.read_uartimsc()
     }
 
     /// Sets the interrupt masks.
     pub fn set_interrupt_masks(&mut self, masks: Interrupts) {
         // SAFETY: The caller of OwnedMmioPointer::new promised that it wraps a valid and unique
         // register block.
-        unsafe { (&raw mut (*self.regs.ptr_mut()).uartimsc).write_volatile(masks) }
+        let mut regs = unsafe { PL011Registers::new_mmio(self.regs.ptr_mut()) };
+        regs.write_uartimsc(masks);
     }
 
     /// Clears the given set of interrupts.
     pub fn clear_interrupts(&mut self, interrupts: Interrupts) {
         // SAFETY: The caller of OwnedMmioPointer::new promised that it wraps a valid and unique
         // register block.
-        unsafe { (&raw mut (*self.regs.ptr_mut()).uarticr).write_volatile(interrupts) }
+        let mut regs = unsafe { PL011Registers::new_mmio(self.regs.ptr_mut()) };
+        regs.write_uarticr(interrupts);
     }
 }
 
