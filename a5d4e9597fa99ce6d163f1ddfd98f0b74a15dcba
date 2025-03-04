@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "bac7b902_8408532f",
+        "filename": "src/lib.rs",
+        "patchSetId": 1
+      },
+      "lineNbr": 400,
+      "author": {
+        "id": 1000160
+      },
+      "writtenOn": "2025-03-04T16:04:04Z",
+      "side": 1,
+      "message": "This doesn\u0027t work, because `read_uartfr()` (and all derived `read_*()` methods) takes a raw mut pointer. We cannot provide that here, since `self.regs.ptr_mut()` would need `\u0026mut self` but this method takes `\u0026self` only.\n\nIn general deriving `read_*()` methods that take const mut pointers wouldn\u0027t be safe, since reading some registers have side effects which actually change the state of the peripheral.\n\nA possible solution would be to store an `OwnedMmioPointer\u003c\u0027a, PL011Registers\u003e` in the derived `MmioPL011Registers` instead of the raw pointer.",
+      "revId": "a5d4e9597fa99ce6d163f1ddfd98f0b74a15dcba",
+      "serverId": "8f6f209b-db1a-4cbf-aa44-c8bc30e9bfda"
+    }
+  ]
+}
