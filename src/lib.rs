@@ -13,7 +13,11 @@ mod embedded_io;
 
 use bitflags::bitflags;
 use core::fmt;
-pub use safe_mmio::OwnedMmioPointer;
+pub use safe_mmio::UniqueMmioPointer;
+use safe_mmio::{
+    field, field_shared,
+    fields::{ReadPure, ReadPureWrite, ReadWrite, WriteOnly},
+};
 use thiserror::Error;
 use zerocopy::{FromBytes, Immutable, IntoBytes, KnownLayout};
 
@@ -172,55 +176,55 @@ bitflags! {
 #[repr(C, align(4))]
 pub struct PL011Registers {
     /// 0x000: Data Register
-    uartdr: u32,
+    uartdr: ReadWrite<u32>,
     /// 0x004: Receive Status Register/Error Clear Register
-    uartrsr_ecr: u32,
+    uartrsr_ecr: ReadPureWrite<u32>,
     /// 0x008 - 0x014
     reserved_08: [u32; 4],
     /// 0x018: Flag Register
-    uartfr: FlagsRegister,
+    uartfr: ReadPure<FlagsRegister>,
     /// 0x01C
     reserved_1c: u32,
     /// 0x020: IrDA Low-Power Counter Register
-    uartilpr: u32,
+    uartilpr: ReadPureWrite<u32>,
     /// 0x024: Integer Baud Rate Register
-    uartibrd: u32,
+    uartibrd: ReadPureWrite<u32>,
     /// 0x028: Fractional Baud Rate Register
-    uartfbrd: u32,
+    uartfbrd: ReadPureWrite<u32>,
     /// 0x02C: Line Control Register
-    uartlcr_h: LineControlRegister,
+    uartlcr_h: ReadPureWrite<LineControlRegister>,
     /// 0x030: Control Register
-    uartcr: ControlRegister,
+    uartcr: ReadPureWrite<ControlRegister>,
     /// 0x034: Interrupt FIFO Level Select Register
-    uartifls: u32,
+    uartifls: ReadPureWrite<u32>,
     /// 0x038: Interrupt Mask Set/Clear Register
-    uartimsc: Interrupts,
+    uartimsc: ReadPureWrite<Interrupts>,
     /// 0x03C: Raw Interrupt Status Register
-    uartris: Interrupts,
+    uartris: ReadPure<Interrupts>,
     /// 0x040: Masked INterrupt Status Register
-    uartmis: Interrupts,
+    uartmis: ReadPure<Interrupts>,
     /// 0x044: Interrupt Clear Register
-    uarticr: Interrupts,
+    uarticr: WriteOnly<Interrupts>,
     /// 0x048: DMA control Register
-    uartdmacr: u32,
+    uartdmacr: ReadPureWrite<u32>,
     /// 0x04C - 0xFDC
     reserved_4c: [u32; 997],
     /// 0xFE0: UARTPeriphID0 Register
-    uartperiphid0: u32,
+    uartperiphid0: ReadPure<u32>,
     /// 0xFE4: UARTPeriphID1 Register
-    uartperiphid1: u32,
+    uartperiphid1: ReadPure<u32>,
     /// 0xFE8: UARTPeriphID2 Register
-    uartperiphid2: u32,
+    uartperiphid2: ReadPure<u32>,
     /// 0xFEC: UARTPeriphID3 Register
-    uartperiphid3: u32,
+    uartperiphid3: ReadPure<u32>,
     /// 0xFF0: UARTPCellID0 Register
-    uartpcellid0: u32,
+    uartpcellid0: ReadPure<u32>,
     /// 0xFF4: UARTPCellID1 Register
-    uartpcellid1: u32,
+    uartpcellid1: ReadPure<u32>,
     /// 0xFF8: UARTPCellID2 Register
-    uartpcellid2: u32,
+    uartpcellid2: ReadPure<u32>,
     /// 0xFFC: UARTPCellID3 Register
-    uartpcellid3: u32,
+    uartpcellid3: ReadPure<u32>,
 }
 
 // Config
@@ -310,12 +314,12 @@ pub enum Error {
 
 /// PL011 UART implementation
 pub struct Uart<'a> {
-    regs: OwnedMmioPointer<'a, PL011Registers>,
+    regs: UniqueMmioPointer<'a, PL011Registers>,
 }
 
 impl<'a> Uart<'a> {
     /// Creates new UART instance.
-    pub fn new(regs: OwnedMmioPointer<'a, PL011Registers>) -> Self {
+    pub fn new(regs: UniqueMmioPointer<'a, PL011Registers>) -> Self {
         Self { regs }
     }
 
@@ -343,31 +347,22 @@ impl<'a> Uart<'a> {
             StopBits::Two => LineControlRegister::STP2,
         } | LineControlRegister::FEN;
 
-        // SAFETY: The caller of OwnedMmioPointer::new promised that it wraps a valid and unique
-        // register block.
-        unsafe {
-            (&raw mut (*self.regs.ptr_mut()).uartrsr_ecr).write_volatile(0);
-            (&raw mut (*self.regs.ptr_mut()).uartcr).write_volatile(ControlRegister::empty());
+        field!(self.regs, uartrsr_ecr).write(0);
+        field!(self.regs, uartcr).write(ControlRegister::empty());
 
-            (&raw mut (*self.regs.ptr_mut()).uartibrd).write_volatile(uartibrd);
-            (&raw mut (*self.regs.ptr_mut()).uartfbrd).write_volatile(uartfbrd);
-            (&raw mut (*self.regs.ptr_mut()).uartlcr_h).write_volatile(line_control);
+        field!(self.regs, uartibrd).write(uartibrd);
+        field!(self.regs, uartfbrd).write(uartfbrd);
+        field!(self.regs, uartlcr_h).write(line_control);
 
-            (&raw mut (*self.regs.ptr_mut()).uartcr).write_volatile(
-                ControlRegister::RXE | ControlRegister::TXE | ControlRegister::UARTEN,
-            );
-        }
+        field!(self.regs, uartcr)
+            .write(ControlRegister::RXE | ControlRegister::TXE | ControlRegister::UARTEN);
 
         Ok(())
     }
 
     /// Disable UART
     pub fn disable(&mut self) {
-        // SAFETY: The caller of OwnedMmioPointer::new promised that it wraps a valid and unique
-        // register block.
-        unsafe {
-            (&raw mut (*self.regs.ptr_mut()).uartcr).write_volatile(ControlRegister::empty());
-        }
+        field!(self.regs, uartcr).write(ControlRegister::empty());
     }
 
     /// Check if receive FIFO is empty
@@ -397,9 +392,7 @@ impl<'a> Uart<'a> {
 
     /// Reads and returns the flag register.
     fn flags(&self) -> FlagsRegister {
-        // SAFETY: The caller of OwnedMmioPointer::new promised that it wraps a valid and unique
-        // register block.
-        unsafe { (&raw const (*self.regs.ptr()).uartfr).read_volatile() }
+        field_shared!(self.regs, uartfr).read()
     }
 
     /// Non-blocking read of a single byte from the UART.
@@ -410,9 +403,7 @@ impl<'a> Uart<'a> {
             return Ok(None);
         }
 
-        // SAFETY: The caller of OwnedMmioPointer::new promised that it wraps a valid and unique
-        // register block.
-        let dr = unsafe { (&raw const (*self.regs.ptr()).uartdr).read_volatile() };
+        let dr = field!(self.regs, uartdr).read();
 
         let flags = DataRegister::from_bits_truncate(dr);
 
@@ -431,23 +422,19 @@ impl<'a> Uart<'a> {
 
     /// Non-blocking write of a single byte to the UART
     pub fn write_word(&mut self, word: u8) {
-        // SAFETY: The caller of OwnedMmioPointer::new promised that it wraps a valid and unique
-        // register block.
-        unsafe {
-            (&raw mut (*self.regs.ptr_mut()).uartdr).write_volatile(word as u32);
-        }
+        field!(self.regs, uartdr).write(word as u32);
     }
 
     /// Read UART peripheral identification structure
     pub fn read_identification(&self) -> Identification {
-        // SAFETY: The caller of OwnedMmioPointer::new promised that it wraps a valid and unique
+        // SAFETY: The caller of UniqueMmioPointer::new promised that it wraps a valid and unique
         // register block.
-        let id: [u32; 4] = unsafe {
+        let id: [u32; 4] = {
             [
-                (&raw const (*self.regs.ptr()).uartperiphid0).read_volatile(),
-                (&raw const (*self.regs.ptr()).uartperiphid1).read_volatile(),
-                (&raw const (*self.regs.ptr()).uartperiphid2).read_volatile(),
-                (&raw const (*self.regs.ptr()).uartperiphid3).read_volatile(),
+                field_shared!(self.regs, uartperiphid0).read(),
+                field_shared!(self.regs, uartperiphid1).read(),
+                field_shared!(self.regs, uartperiphid2).read(),
+                field_shared!(self.regs, uartperiphid3).read(),
             ]
         };
 
@@ -488,44 +475,32 @@ impl<'a> Uart<'a> {
     pub fn set_interrupt_fifo_levels(&mut self, rx_level: FifoLevel, tx_level: FifoLevel) {
         let fifo_levels = ((rx_level as u32) << 3) | tx_level as u32;
 
-        // SAFETY: The caller of OwnedMmioPointer::new promised that it wraps a valid and unique
-        // register block.
-        unsafe { (&raw mut (*self.regs.ptr_mut()).uartifls).write_volatile(fifo_levels) }
+        field!(self.regs, uartifls).write(fifo_levels);
     }
 
     /// Reads the raw interrupt status register.
     pub fn raw_interrupt_status(&self) -> Interrupts {
-        // SAFETY: The caller of OwnedMmioPointer::new promised that it wraps a valid and unique
-        // register block.
-        unsafe { (&raw const (*self.regs.ptr()).uartris).read_volatile() }
+        field_shared!(self.regs, uartris).read()
     }
 
     /// Reads the masked interrupt status register.
     pub fn masked_interrupt_status(&self) -> Interrupts {
-        // SAFETY: The caller of OwnedMmioPointer::new promised that it wraps a valid and unique
-        // register block.
-        unsafe { (&raw const (*self.regs.ptr()).uartmis).read_volatile() }
+        field_shared!(self.regs, uartmis).read()
     }
 
     /// Returns the current set of interrupt masks.
     pub fn interrupt_masks(&self) -> Interrupts {
-        // SAFETY: The caller of OwnedMmioPointer::new promised that it wraps a valid and unique
-        // register block.
-        unsafe { (&raw const (*self.regs.ptr()).uartimsc).read_volatile() }
+        field_shared!(self.regs, uartimsc).read()
     }
 
     /// Sets the interrupt masks.
     pub fn set_interrupt_masks(&mut self, masks: Interrupts) {
-        // SAFETY: The caller of OwnedMmioPointer::new promised that it wraps a valid and unique
-        // register block.
-        unsafe { (&raw mut (*self.regs.ptr_mut()).uartimsc).write_volatile(masks) }
+        field!(self.regs, uartimsc).write(masks)
     }
 
     /// Clears the given set of interrupts.
     pub fn clear_interrupts(&mut self, interrupts: Interrupts) {
-        // SAFETY: The caller of OwnedMmioPointer::new promised that it wraps a valid and unique
-        // register block.
-        unsafe { (&raw mut (*self.regs.ptr_mut()).uarticr).write_volatile(interrupts) }
+        field!(self.regs, uarticr).write(interrupts)
     }
 }
 
@@ -570,8 +545,8 @@ mod tests {
             self.regs[offset / 4]
         }
 
-        fn get(&mut self) -> OwnedMmioPointer<PL011Registers> {
-            OwnedMmioPointer::from(transmute_mut!(&mut self.regs))
+        fn get(&mut self) -> UniqueMmioPointer<PL011Registers> {
+            UniqueMmioPointer::from(transmute_mut!(&mut self.regs))
         }
 
         pub fn uart_for_test(&mut self) -> Uart {
