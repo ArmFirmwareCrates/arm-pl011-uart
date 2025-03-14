@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.3.0
+- Use safe MMIO methods from new version of safe-mmio
+
 ## 0.2.0
 
 - Made `embedded-hal` and `embedded-io-nb` trait implementations optional, behind corresponding
