@@ -35,6 +35,36 @@ providing access to the peripheral without requiring memory mapping.
 * Handling modem control and status signals
 * Adding peripheral testing
 
+## Example
+
+```rust
+use arm_pl011_uart::{DataBits, LineConfig, Parity, PL011Registers, StopBits, Uart, UniqueMmioPointer};
+use core::{fmt::Write, ptr::NonNull};
+# use zerocopy::transmute_mut;
+# let mut fake_registers = [0u32; 1024];
+# let UART_ADDRESS : *mut PL011Registers = transmute_mut!(&mut fake_registers);
+
+// SAFETY: `UART_ADDRESS` is the base address of a PL011 UART register block. It remains valid for
+// the lifetime of the application and nothing else references this address range.
+let uart_pointer = unsafe { UniqueMmioPointer::new(NonNull::new(UART_ADDRESS).unwrap()) };
+
+// Create driver instance
+let mut uart = Uart::new(uart_pointer);
+
+// Configure and enable UART
+let line_config = LineConfig {
+    data_bits: DataBits::Bits8,
+    parity: Parity::None,
+    stop_bits: StopBits::One,
+};
+uart.enable(line_config, 115_200, 16_000_000);
+
+// Send and receive data
+uart.write_word(0x5a);
+uart.write_str("Hello Uart!");
+println!("{:?}", uart.read_word());
+```
+
 ## License
 
 The project is MIT and Apache-2.0 dual licensed, see `LICENSE-APACHE` and `LICENSE-MIT`.
