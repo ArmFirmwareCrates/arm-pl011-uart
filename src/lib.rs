@@ -310,6 +310,7 @@ pub struct Identification {
     pub designer: u8,
     pub revision_number: u8,
     pub configuration: u8,
+    asd,
 }
 
 impl Identification {
