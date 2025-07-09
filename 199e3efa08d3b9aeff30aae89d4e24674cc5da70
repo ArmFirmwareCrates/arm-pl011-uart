@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a39c7cb9_f3ab8c76",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1000043
+      },
+      "writtenOn": "2025-07-09T12:19:59Z",
+      "side": 1,
+      "message": "Need to apply this in source files as well!",
+      "revId": "199e3efa08d3b9aeff30aae89d4e24674cc5da70",
+      "serverId": "8f6f209b-db1a-4cbf-aa44-c8bc30e9bfda"
+    }
+  ]
+}
