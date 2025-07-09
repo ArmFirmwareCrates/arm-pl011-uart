@@ -72,4 +72,4 @@ Arm word trademark.
 
 --------------
 
-*Copyright 2024 Arm Limited and/or its affiliates <open-source-office@arm.com>*
+*Copyright The arm-pl011-uart Contributors.*
