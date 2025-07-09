@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright 2023-2024 Arm Limited and/or its affiliates <open-source-office@arm.com>
+// SPDX-FileCopyrightText: Copyright The arm-pl011-uart Contributors.
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
 #![no_std]
