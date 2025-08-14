@@ -575,11 +575,11 @@ mod tests {
             self.regs[offset / 4]
         }
 
-        fn get(&mut self) -> UniqueMmioPointer<PL011Registers> {
+        fn get(&mut self) -> UniqueMmioPointer<'_, PL011Registers> {
             UniqueMmioPointer::from(transmute_mut!(&mut self.regs))
         }
 
-        pub fn uart_for_test(&mut self) -> Uart {
+        pub fn uart_for_test(&mut self) -> Uart<'_> {
             Uart::new(self.get())
         }
     }
