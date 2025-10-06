@@ -1,6 +1,18 @@
 # Changelog
 
+## 0.3.2
+
+- Moved repository under arm-firmware-crates.
+- Updated trademark notice in readme.
+- Updated copyright notices to refer to contributors rather than Arm.
+
+## 0.3.1
+
+- Updated `safe-mmio` dependency to 0.2.1.
+- Added example to documentation.
+
 ## 0.3.0
+
 - Use safe MMIO methods from new version of safe-mmio
 
 ## 0.2.0
