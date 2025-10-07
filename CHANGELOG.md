@@ -6,6 +6,10 @@
 
 - Updated to `embedded-io` 0.7.1.
 
+### Other changes
+
+- Updated to 2024 edition. This increases the MSRV to 1.85.
+
 ## 0.3.2
 
 - Moved repository under arm-firmware-crates.

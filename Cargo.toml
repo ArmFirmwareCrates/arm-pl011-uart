@@ -10,13 +10,13 @@ authors = [
     "Andrew Walbran <qwandor@google.com>",
 ]
 description = "Arm PrimeCell UART (PL011) driver"
-edition = "2021"
+edition = "2024"
 license = "MIT OR Apache-2.0"
 repository = "https://git.trustedfirmware.org/arm-firmware-crates/arm-pl011-uart.git"
 keywords = ["arm", "pl011", "uart", "driver"]
 categories = ["hardware-support", "embedded", "no-std", "no-std::no-alloc"]
 readme = "README.md"
-rust-version = "1.82"
+rust-version = "1.85"
 
 [dependencies]
 bitflags = "2.8"
