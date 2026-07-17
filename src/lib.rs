@@ -349,7 +349,7 @@ pub struct Uart<'a> {
 
 impl<'a> Uart<'a> {
     /// Creates new UART instance.
-    pub fn new(regs: UniqueMmioPointer<'a, PL011Registers>) -> Self {
+    pub const fn new(regs: UniqueMmioPointer<'a, PL011Registers>) -> Self {
         Self { regs }
     }
 

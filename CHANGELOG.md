@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Improvements
+
+- `Uart::new` is now a const function.
+
 ## 0.5.0
 
 ### Breaking changes
